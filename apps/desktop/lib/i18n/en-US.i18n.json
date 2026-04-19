@@ -1,0 +1,38 @@
+{
+  "app": {
+    "title": "AutoGLM"
+  },
+  "nav": {
+    "devices": "Devices",
+    "chat": "Chat",
+    "workflows": "Workflows",
+    "history": "History",
+    "settings": "Settings"
+  },
+  "page": {
+    "devices": {
+      "placeholder": "Devices (implemented in #2)"
+    },
+    "chat": {
+      "placeholder": "Chat & Screen (implemented in #3, #5)"
+    },
+    "workflows": {
+      "placeholder": "Workflows (TBD)"
+    },
+    "history": {
+      "placeholder": "History (implemented in #4)"
+    }
+  },
+  "settings": {
+    "theme": {
+      "label": "Theme",
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "locale": {
+      "label": "Language",
+      "system": "System"
+    }
+  }
+}

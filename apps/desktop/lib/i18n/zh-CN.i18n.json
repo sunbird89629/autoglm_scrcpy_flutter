@@ -1,0 +1,38 @@
+{
+  "app": {
+    "title": "AutoGLM"
+  },
+  "nav": {
+    "devices": "设备",
+    "chat": "对话",
+    "workflows": "工作流",
+    "history": "历史",
+    "settings": "设置"
+  },
+  "page": {
+    "devices": {
+      "placeholder": "设备列表（子项目 #2 实现）"
+    },
+    "chat": {
+      "placeholder": "对话与屏幕（子项目 #3、#5 实现）"
+    },
+    "workflows": {
+      "placeholder": "工作流（待实现）"
+    },
+    "history": {
+      "placeholder": "历史（子项目 #4 实现）"
+    }
+  },
+  "settings": {
+    "theme": {
+      "label": "主题",
+      "system": "跟随系统",
+      "light": "浅色",
+      "dark": "深色"
+    },
+    "locale": {
+      "label": "语言",
+      "system": "跟随系统"
+    }
+  }
+}
