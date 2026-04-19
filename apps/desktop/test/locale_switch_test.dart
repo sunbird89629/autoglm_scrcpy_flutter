@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:autoglm_core/autoglm_core.dart';
 import 'package:autoglm_desktop/i18n/strings.g.dart';
 import 'package:autoglm_desktop/providers/locale_provider.dart';
@@ -27,11 +25,14 @@ void main() {
       ],
     );
 
-    // First, read settings to let them load
-    await container.read(settingsProvider);
+    // ignore: cascade_invocations - sequential operations, not chaining
+    // Read settings - this starts async loading
+    // ignore: cascade_invocations - sequential operations, not chaining
+    container.read(settingsProvider);
 
-    // Now read the locale provider - at this point settings are available
-    final _ = container.read(localeApplyProvider);
+    // Read the locale provider - applies locale when settings are available
+    // ignore: cascade_invocations - sequential operations, not chaining
+    container.read(localeApplyProvider);
 
     // Verify the locale was applied
     expect(LocaleSettings.currentLocale.languageCode, 'en');
@@ -48,19 +49,22 @@ void main() {
       ],
     );
 
-    // First, read settings to let them load
-    await container.read(settingsProvider);
+    // ignore: cascade_invocations - sequential operations, not chaining
+    // Read settings - this starts async loading
+    // ignore: cascade_invocations - sequential operations, not chaining
+    container.read(settingsProvider);
 
-    // Now read the locale provider - at this point settings are available
-    final _ = container.read(localeApplyProvider);
+    // Read the locale provider - applies locale when settings are available
+    // ignore: cascade_invocations - sequential operations, not chaining
+    container.read(localeApplyProvider);
 
     // Verify the locale was applied
     expect(LocaleSettings.currentLocale.languageCode, 'zh');
     expect(LocaleSettings.currentLocale.countryCode, 'CN');
   });
 
-  test('localeApplyProvider parses and applies locales', () async {
-    // This test verifies the provider infrastructure works by testing the parsing
+  test('localeApplyProvider parses locales correctly', () {
+    // This test verifies the provider infrastructure works by testing parsing
     final enUs = AppLocaleUtils.parse('en-US');
     expect(enUs.languageCode, 'en');
     expect(enUs.countryCode, 'US');

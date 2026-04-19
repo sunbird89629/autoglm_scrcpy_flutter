@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// `Settings.locale` is one of: 'system' | 'zh-CN' | 'en-US'.
 final localeApplyProvider = Provider<void>((ref) {
   final asyncSettings = ref.watch(settingsProvider);
+  // ignore: cascade_invocations - side-effect operation, not a sequence
   asyncSettings.maybeWhen(
     data: (s) {
       if (s.locale == 'system') {
