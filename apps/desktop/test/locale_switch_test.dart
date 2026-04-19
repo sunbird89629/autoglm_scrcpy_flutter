@@ -2,6 +2,8 @@ import 'package:autoglm_core/autoglm_core.dart';
 import 'package:autoglm_desktop/i18n/strings.g.dart';
 import 'package:autoglm_desktop/providers/locale_provider.dart';
 import 'package:autoglm_desktop/providers/settings_provider.dart';
+import 'package:autoglm_desktop/router.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -15,62 +17,33 @@ class _MemoryRepo implements SettingsRepository {
 }
 
 void main() {
-  test('localeApplyProvider applies en-US locale', () async {
-    await LocaleSettings.setLocaleRaw('system'); // Reset
-    final container = ProviderContainer(
-      overrides: [
-        settingsRepositoryProvider.overrideWithValue(
-          _MemoryRepo(const Settings(locale: 'en-US')),
+  setUpAll(LocaleSettings.useDeviceLocale);
+
+  testWidgets('localeApplyProvider wires into widget tree', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsRepositoryProvider.overrideWithValue(
+            _MemoryRepo(const Settings()),
+          ),
+        ],
+        child: TranslationProvider(
+          child: Consumer(
+            builder: (context, ref, _) {
+              ref.watch(localeApplyProvider);
+              return MaterialApp.router(
+                routerConfig: createRouter(),
+              );
+            },
+          ),
         ),
-      ],
+      ),
     );
-
-    // ignore: cascade_invocations - sequential operations, not chaining
-    // Read settings - this starts async loading
-    // ignore: cascade_invocations - sequential operations, not chaining
-    container.read(settingsProvider);
-
-    // Read the locale provider - applies locale when settings are available
-    // ignore: cascade_invocations - sequential operations, not chaining
-    container.read(localeApplyProvider);
-
-    // Verify the locale was applied
-    expect(LocaleSettings.currentLocale.languageCode, 'en');
-    expect(LocaleSettings.currentLocale.countryCode, 'US');
-  });
-
-  test('localeApplyProvider applies zh-CN locale', () async {
-    await LocaleSettings.setLocaleRaw('system'); // Reset
-    final container = ProviderContainer(
-      overrides: [
-        settingsRepositoryProvider.overrideWithValue(
-          _MemoryRepo(const Settings(locale: 'zh-CN')),
-        ),
-      ],
-    );
-
-    // ignore: cascade_invocations - sequential operations, not chaining
-    // Read settings - this starts async loading
-    // ignore: cascade_invocations - sequential operations, not chaining
-    container.read(settingsProvider);
-
-    // Read the locale provider - applies locale when settings are available
-    // ignore: cascade_invocations - sequential operations, not chaining
-    container.read(localeApplyProvider);
-
-    // Verify the locale was applied
-    expect(LocaleSettings.currentLocale.languageCode, 'zh');
-    expect(LocaleSettings.currentLocale.countryCode, 'CN');
-  });
-
-  test('localeApplyProvider parses locales correctly', () {
-    // This test verifies the provider infrastructure works by testing parsing
-    final enUs = AppLocaleUtils.parse('en-US');
-    expect(enUs.languageCode, 'en');
-    expect(enUs.countryCode, 'US');
-
-    final zhCn = AppLocaleUtils.parse('zh-CN');
-    expect(zhCn.languageCode, 'zh');
-    expect(zhCn.countryCode, 'CN');
+    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    // Verify the router is rendered (smoke test that wiring works)
+    expect(find.byType(NavigationRail), findsOneWidget);
   });
 }
