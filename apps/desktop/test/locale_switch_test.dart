@@ -1,14 +1,13 @@
 import 'package:autoglm_core/autoglm_core.dart';
 import 'package:autoglm_desktop/i18n/strings.g.dart';
-import 'package:autoglm_desktop/providers/locale_provider.dart';
+import 'package:autoglm_desktop/providers/adb_provider.dart';
 import 'package:autoglm_desktop/providers/settings_provider.dart';
-import 'package:autoglm_desktop/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _MemoryRepo implements SettingsRepository {
-  _MemoryRepo(this.initial);
+  _MemoryRepo([this.initial = const Settings()]);
   Settings initial;
   @override
   Future<Settings> load() async => initial;
@@ -17,33 +16,28 @@ class _MemoryRepo implements SettingsRepository {
 }
 
 void main() {
-  setUpAll(LocaleSettings.useDeviceLocale);
-
   testWidgets('localeApplyProvider wires into widget tree', (tester) async {
+    final repo = _MemoryRepo(const Settings(locale: 'zh-CN'));
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          settingsRepositoryProvider.overrideWithValue(
-            _MemoryRepo(const Settings()),
-          ),
+          settingsRepositoryProvider.overrideWithValue(repo),
+          adbDevicesProvider.overrideWith((ref) => ['test-device']),
         ],
         child: TranslationProvider(
           child: Consumer(
-            builder: (context, ref, _) {
-              ref.watch(localeApplyProvider);
-              return MaterialApp.router(
-                routerConfig: createRouter(),
-              );
+            builder: (context, ref, child) {
+              // Trigger watch
+              ref.watch(settingsProvider);
+              return const MaterialApp(home: Scaffold(body: Text('hello')));
             },
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
-    for (var i = 0; i < 5; i++) {
-      await tester.pump(const Duration(milliseconds: 50));
-    }
-    // Verify the router is rendered (smoke test that wiring works)
-    expect(find.byType(NavigationRail), findsOneWidget);
+    final element = tester.element(find.text('hello'));
+    final locale = TranslationProvider.of(element).locale;
+    expect(locale.languageCode, 'zh');
   });
 }

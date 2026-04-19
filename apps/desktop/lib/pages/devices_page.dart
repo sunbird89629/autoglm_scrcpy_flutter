@@ -86,7 +86,7 @@ class DevicesPage extends ConsumerWidget {
             onPressed: () async {
               final port = int.tryParse(portCtrl.text) ?? 0;
               try {
-                final client = ref.read(adbClientProvider);
+                final client = await ref.read(adbClientProvider.future);
                 final res = await client.pair(ipCtrl.text, port, codeCtrl.text);
                 if (ctx.mounted) {
                   Navigator.pop(ctx);

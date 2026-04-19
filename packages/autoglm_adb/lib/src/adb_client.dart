@@ -1,4 +1,5 @@
 import 'package:autoglm_adb/src/adb_process_runner.dart';
+import 'package:autoglm_adb/src/exceptions.dart';
 
 /// Provides high-level ADB commands.
 class AdbClient {

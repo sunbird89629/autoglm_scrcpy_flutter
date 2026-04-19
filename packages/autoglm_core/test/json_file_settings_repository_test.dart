@@ -42,8 +42,7 @@ void main() {
     });
 
     test('save creates parent directories if missing', () async {
-      final nested =
-          File(p.join(tmp.path, 'a', 'b', 'c', 'settings.json'));
+      final nested = File(p.join(tmp.path, 'a', 'b', 'c', 'settings.json'));
       final nestedRepo = JsonFileSettingsRepository(nested);
       await nestedRepo.save(const Settings(locale: 'zh-CN'));
       expect(nested.existsSync(), isTrue);

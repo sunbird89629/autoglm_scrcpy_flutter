@@ -1,17 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-/// Exception thrown by [AdbProcessRunner] when a command fails.
-class AdbException implements Exception {
-  /// Creates a new [AdbException] with the given [message].
-  const AdbException(this.message);
-
-  /// The error message.
-  final String message;
-
-  @override
-  String toString() => 'AdbException: $message';
-}
+import 'package:autoglm_adb/src/exceptions.dart';
 
 /// A wrapper around [Process.run] providing timeouts and
 /// standard error handling.

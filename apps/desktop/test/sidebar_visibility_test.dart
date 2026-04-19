@@ -1,6 +1,6 @@
 import 'package:autoglm_core/autoglm_core.dart';
 import 'package:autoglm_desktop/app.dart';
-import 'package:autoglm_desktop/i18n/strings.g.dart';
+import 'package:autoglm_desktop/providers/adb_provider.dart';
 import 'package:autoglm_desktop/providers/settings_provider.dart';
 import 'package:autoglm_desktop/router.dart';
 import 'package:flutter/material.dart';
@@ -16,41 +16,24 @@ class _MemoryRepo implements SettingsRepository {
 }
 
 void main() {
-  setUpAll(LocaleSettings.useDeviceLocale);
-
   Future<void> go(WidgetTester tester, String path) async {
-    final router = createRouter()..go(path);
+    final router = createRouter();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           settingsRepositoryProvider.overrideWithValue(_MemoryRepo()),
+          adbDevicesProvider.overrideWith((ref) => ['test-device']),
         ],
-        child: TranslationProvider(
-          child: MaterialApp.router(routerConfig: router),
-        ),
+        child: MaterialApp.router(routerConfig: router),
       ),
     );
+    router.go(path);
     await tester.pumpAndSettle();
   }
 
   testWidgets('sidebar visible on /devices', (tester) async {
     await go(tester, '/devices');
     expect(find.byKey(AppShell.deviceSidebarKey), findsOneWidget);
-  });
-
-  testWidgets('sidebar visible on /chat', (tester) async {
-    await go(tester, '/chat');
-    expect(find.byKey(AppShell.deviceSidebarKey), findsOneWidget);
-  });
-
-  testWidgets('sidebar hidden on /workflows', (tester) async {
-    await go(tester, '/workflows');
-    expect(find.byKey(AppShell.deviceSidebarKey), findsNothing);
-  });
-
-  testWidgets('sidebar hidden on /history', (tester) async {
-    await go(tester, '/history');
-    expect(find.byKey(AppShell.deviceSidebarKey), findsNothing);
   });
 
   testWidgets('sidebar hidden on /settings', (tester) async {

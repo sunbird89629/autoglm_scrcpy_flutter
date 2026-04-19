@@ -1,5 +1,6 @@
 import 'package:autoglm_core/autoglm_core.dart';
 import 'package:autoglm_desktop/i18n/strings.g.dart';
+import 'package:autoglm_desktop/providers/adb_provider.dart';
 import 'package:autoglm_desktop/providers/settings_provider.dart';
 import 'package:autoglm_desktop/router.dart';
 import 'package:flutter/material.dart';
@@ -23,6 +24,7 @@ void main() {
       ProviderScope(
         overrides: [
           settingsRepositoryProvider.overrideWithValue(_MemoryRepo()),
+          adbDevicesProvider.overrideWith((ref) => ['test-device']),
         ],
         child: TranslationProvider(
           child: MaterialApp.router(routerConfig: router),
@@ -54,6 +56,7 @@ void main() {
       ProviderScope(
         overrides: [
           settingsRepositoryProvider.overrideWithValue(_MemoryRepo()),
+          adbDevicesProvider.overrideWith((ref) => ['test-device']),
         ],
         child: TranslationProvider(
           child: MaterialApp.router(routerConfig: router),
