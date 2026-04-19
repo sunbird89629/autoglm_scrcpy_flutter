@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:autoglm_core/autoglm_core.dart';
 import 'package:autoglm_desktop/i18n/strings.g.dart';
+import 'package:autoglm_desktop/providers/locale_provider.dart';
 import 'package:autoglm_desktop/providers/settings_provider.dart';
 import 'package:autoglm_desktop/providers/theme_mode_provider.dart';
 import 'package:autoglm_desktop/router.dart';
@@ -38,6 +39,7 @@ class _Root extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(localeApplyProvider); // side-effect: applies Settings.locale
     final themeMode = ref.watch(themeModeProvider);
     return MaterialApp.router(
       title: 'AutoGLM',
