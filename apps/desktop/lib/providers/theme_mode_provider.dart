@@ -2,12 +2,14 @@ import 'package:autoglm_desktop/providers/settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Derived: the current effective ThemeMode. Defaults to system while settings
-/// are still loading.
+/// Provider for the [ThemeMode] based on application settings.
 final themeModeProvider = Provider<ThemeMode>((ref) {
-  final asyncSettings = ref.watch(settingsProvider);
-  return asyncSettings.maybeWhen(
-    data: (s) => s.themeMode,
-    orElse: () => ThemeMode.system,
-  );
+  final settings = ref.watch(settingsProvider).value;
+  final themeStr = settings?.themeMode ?? 'system';
+
+  return switch (themeStr) {
+    'light' => ThemeMode.light,
+    'dark' => ThemeMode.dark,
+    _ => ThemeMode.system,
+  };
 });

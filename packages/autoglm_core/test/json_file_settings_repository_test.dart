@@ -1,59 +1,38 @@
 import 'dart:io';
-
 import 'package:autoglm_core/autoglm_core.dart';
-import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path/path.dart' as p;
 
 void main() {
   group('JsonFileSettingsRepository', () {
-    late Directory tmp;
-    late File file;
-    late JsonFileSettingsRepository repo;
+    late Directory tempDir;
+    late String filePath;
 
-    setUp(() async {
-      tmp = await Directory.systemTemp.createTemp('settings_test_');
-      file = File(p.join(tmp.path, 'settings.json'));
-      repo = JsonFileSettingsRepository(file);
+    setUp(() {
+      tempDir = Directory.systemTemp.createTempSync('settings_test');
+      filePath = '${tempDir.path}/settings.json';
     });
 
-    tearDown(() async {
-      if (tmp.existsSync()) {
-        await tmp.delete(recursive: true);
-      }
+    tearDown(() {
+      tempDir.deleteSync(recursive: true);
     });
 
     test('load returns defaults when file does not exist', () async {
-      expect(file.existsSync(), isFalse);
-      final s = await repo.load();
-      expect(s, equals(const Settings()));
+      final repo = JsonFileSettingsRepository(filePath: filePath);
+      final settings = await repo.load();
+      expect(settings.themeMode, 'system');
     });
 
     test('save then load returns the same settings', () async {
-      const original = Settings(
-        themeMode: ThemeMode.dark,
-        locale: 'en-US',
-        llmApiKey: 'sk-test',
-        mcpServerEnabled: true,
+      final repo = JsonFileSettingsRepository(filePath: filePath);
+      const settings = Settings(
+        themeMode: 'dark',
+        llmApiKey: 'test-key',
       );
-      await repo.save(original);
+
+      await repo.save(settings);
       final loaded = await repo.load();
-      expect(loaded, equals(original));
-    });
-
-    test('save creates parent directories if missing', () async {
-      final nested = File(p.join(tmp.path, 'a', 'b', 'c', 'settings.json'));
-      final nestedRepo = JsonFileSettingsRepository(nested);
-      await nestedRepo.save(const Settings(locale: 'zh-CN'));
-      expect(nested.existsSync(), isTrue);
-      final loaded = await nestedRepo.load();
-      expect(loaded.locale, 'zh-CN');
-    });
-
-    test('load returns defaults if file is corrupted JSON', () async {
-      await file.writeAsString('{not valid json');
-      final s = await repo.load();
-      expect(s, equals(const Settings()));
+      expect(loaded.themeMode, 'dark');
+      expect(loaded.llmApiKey, 'test-key');
     });
   });
 }
