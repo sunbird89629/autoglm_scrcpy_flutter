@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:autoglm_core/autoglm_core.dart';
 import 'package:autoglm_scrcpy/src/scrcpy_packet.dart';
 
 /// Metadata about the scrcpy video stream.
@@ -32,6 +33,7 @@ class ScrcpyStreamParser {
   final _metadataController = StreamController<ScrcpyMetadata>.broadcast();
 
   bool _headerParsed = false;
+  int _videoPacketLogCountdown = 3;
 
   /// Stream of parsed scrcpy packets.
   Stream<ScrcpyPacket> get packets => _controller.stream;
@@ -54,7 +56,10 @@ class ScrcpyStreamParser {
 
       const headerSize = 1 + 64 + 12; // dummy + name + codec + resolution
       if (_buffer.length < headerSize) {
-        print('[ScrcpyStreamParser] Waiting for header: ${_buffer.length}/$headerSize bytes');
+        appLogger.d(
+          '[ScrcpyStreamParser] Waiting for header: '
+          '${_buffer.length}/$headerSize bytes',
+        );
         return;
       }
 
@@ -75,7 +80,10 @@ class ScrcpyStreamParser {
         width: width,
         height: height,
       );
-      print('[ScrcpyStreamParser] Parsed metadata: $deviceName ${width}x$height (Codec: 0x${codecId.toRadixString(16)})');
+      appLogger.i(
+        '[ScrcpyStreamParser] Parsed metadata: $deviceName '
+        '${width}x$height (Codec: 0x${codecId.toRadixString(16)})',
+      );
       _metadataController.add(metadataObj);
 
       _buffer.removeRange(0, headerSize);
@@ -102,6 +110,9 @@ class ScrcpyStreamParser {
       const ptsKeyframe = 1 << 62;
 
       if ((ptsRaw & ptsConfig) != 0) {
+        appLogger.i(
+          '[ScrcpyStreamParser] CONFIG packet (SPS/PPS): $length bytes',
+        );
         _controller.add(
           ScrcpyPacket(
             type: ScrcpyPacketType.configuration,
@@ -111,7 +122,16 @@ class ScrcpyStreamParser {
       } else {
         final isKey = (ptsRaw & ptsKeyframe) != 0;
         final pts = ptsRaw & ~ptsKeyframe;
-        print('[ScrcpyStreamParser] Parsed video packet: $length bytes, pts: $pts, keyframe: $isKey');
+        if (isKey) {
+          appLogger.i(
+            '[ScrcpyStreamParser] KEYFRAME packet: $length bytes, pts=$pts',
+          );
+        } else if (_videoPacketLogCountdown > 0) {
+          appLogger.d(
+            '[ScrcpyStreamParser] video packet: $length bytes, pts=$pts',
+          );
+          _videoPacketLogCountdown -= 1;
+        }
         _controller.add(
           ScrcpyPacket(
             type: ScrcpyPacketType.video,

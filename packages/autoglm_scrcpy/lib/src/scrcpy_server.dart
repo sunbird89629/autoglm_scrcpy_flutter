@@ -29,8 +29,11 @@ class ScrcpyServer {
   /// The device ID to run scrcpy on.
   final String deviceId;
 
-  /// The local port to forward to the scrcpy server.
+  /// The preferred local port to forward to the scrcpy server.
   final int port;
+
+  /// The actual port being used after dynamic selection.
+  int? _actualPort;
 
   final ScrcpyProxyServer _proxy;
   final ScrcpyStreamParser _parser;
@@ -62,11 +65,11 @@ class ScrcpyServer {
     // 2. Pick a random scid so the abstract socket name is unique per run
     //    (scrcpy server parses `scid=` as HEX and binds `scrcpy_%08x`).
     final scid = Random.secure().nextInt(0x7FFFFFFF);
-    final scidHex = scid.toRadixString(16);
-    final socketName = 'scrcpy_${scidHex.padLeft(8, '0')}';
+    final scidHex = scid.toRadixString(16).padLeft(8, '0');
+    final socketName = 'scrcpy_$scidHex';
 
-    // 3. Setup port forwarding
-    await _setupForward(socketName);
+    // 3. Setup port forwarding with retry logic for port conflicts
+    await _setupForwardWithRetry(socketName);
 
     // 4. Run the server process
     await _runServer(scidHex);
@@ -80,8 +83,9 @@ class ScrcpyServer {
   }
 
   Future<void> _pushServer() async {
-    const assetPath = 'packages/autoglm_scrcpy/assets/scrcpy-server-v3.3.3';
-    const remotePath = '/data/local/tmp/scrcpy-server-v3.3.3.jar';
+    const version = '3.3.4';
+    const assetPath = 'packages/autoglm_scrcpy/assets/scrcpy-server-v$version';
+    const remotePath = '/data/local/tmp/scrcpy-server-v$version.jar';
 
     try {
       appLogger.d('[ScrcpyServer] Extracting server asset: $assetPath');
@@ -92,7 +96,7 @@ class ScrcpyServer {
 
       // Write to a temporary file on the host machine
       final tempDir = await getTemporaryDirectory();
-      final localTempFile = File(p.join(tempDir.path, 'scrcpy-server-v3.3.3.jar'));
+      final localTempFile = File(p.join(tempDir.path, 'scrcpy-server-v$version.jar'));
       await localTempFile.writeAsBytes(bytes, flush: true);
 
       appLogger.d('[ScrcpyServer] Pushing server to device: $remotePath');
@@ -106,22 +110,42 @@ class ScrcpyServer {
     }
   }
 
-  Future<void> _setupForward(String socketName) async {
-    appLogger.d('[ScrcpyServer] Setting up forward: tcp:$port -> localabstract:$socketName');
-    await adbClient.forward(
-      'tcp:$port',
-      'localabstract:$socketName',
-      deviceId: deviceId,
-    );
+  Future<void> _setupForwardWithRetry(String socketName) async {
+    const maxRetries = 10;
+    int currentPort = port;
+
+    for (var i = 0; i < maxRetries; i++) {
+      try {
+        appLogger.d('[ScrcpyServer] Setting up forward: tcp:$currentPort -> localabstract:$socketName');
+        
+        // Always try to remove any stale forward on this port first
+        try {
+          await adbClient.forwardRemove('tcp:$currentPort', deviceId: deviceId);
+        } catch (_) {}
+
+        await adbClient.forward(
+          'tcp:$currentPort',
+          'localabstract:$socketName',
+          deviceId: deviceId,
+        );
+        _actualPort = currentPort;
+        return;
+      } catch (e) {
+        appLogger.w('[ScrcpyServer] Failed to forward on port $currentPort, retrying...', e);
+        currentPort++;
+      }
+    }
+    throw Exception('Failed to setup port forwarding after $maxRetries attempts');
   }
 
   Future<void> _runServer(String scidHex) async {
+    const version = '3.3.4';
+    const remotePath = '/data/local/tmp/scrcpy-server-v$version.jar';
+
     // Best-effort kill of any lingering scrcpy-server app_process instances
-    // from a previous crashed run. pkill -f on Android toybox matches against
-    // the full command line, so the jar path is a reliable pattern.
     try {
       await adbClient.shell(
-        ['pkill', '-f', 'scrcpy-server-v3.3.3.jar'],
+        ['pkill', '-f', 'scrcpy-server-v'], // Match any scrcpy-server version
         deviceId: deviceId,
       );
       await Future<void>.delayed(const Duration(milliseconds: 300));
@@ -130,11 +154,11 @@ class ScrcpyServer {
     final args = [
       if (deviceId.isNotEmpty) ...['-s', deviceId],
       'shell',
-      'CLASSPATH=/data/local/tmp/scrcpy-server-v3.3.3.jar',
+      'CLASSPATH=$remotePath',
       'app_process',
       '/',
       'com.genymobile.scrcpy.Server',
-      '3.3.3',
+      version,
       'scid=$scidHex',
       'tunnel_forward=true',
       'audio=false',
@@ -143,6 +167,8 @@ class ScrcpyServer {
       'list_encoders=false',
       'list_displays=false',
       'send_dummy_byte=true',
+      'key_frame_interval=2', // Force I-Frame every 2 seconds
+      'power_on=true',        // Ensure screen is on
     ];
 
     appLogger.d('[ScrcpyServer] Executing: adb ${args.join(' ')}');
@@ -165,8 +191,6 @@ class ScrcpyServer {
       }
     });
 
-    // If the server dies before we ever see a keyframe, fail fast so the UI
-    // does not hang on `proxyReady`.
     unawaited(_serverProcess!.exitCode.then((code) async {
       appLogger.w('[ScrcpyServer] server process exited with code $code');
       _parser.close();
@@ -181,22 +205,18 @@ class ScrcpyServer {
     const probeTimeout = Duration(seconds: 2);
     const retryDelay = Duration(milliseconds: 500);
 
+    final connectPort = _actualPort ?? port;
+
     for (var attempt = 1; attempt <= maxAttempts; attempt++) {
       Socket? socket;
       StreamSubscription<Uint8List>? sub;
       try {
         appLogger.d(
           '[ScrcpyServer] Connection attempt $attempt/$maxAttempts to '
-          'localhost:$port',
+          'localhost:$connectPort',
         );
-        socket = await Socket.connect('localhost', port);
+        socket = await Socket.connect('localhost', connectPort);
 
-        // scrcpy with send_dummy_byte=true writes a single 0x00 as soon as the
-        // abstract socket is reachable — we wait for that to prove the tunnel
-        // is really wired up before feeding bytes into the parser. adb may
-        // happily accept + close the forward if the scrcpy server hasn't
-        // bound its abstract socket yet, which looks like "connection OK"
-        // followed by an immediate EOF.
         final probe = Completer<Uint8List?>();
         sub = socket.listen(
           (data) {
@@ -217,8 +237,7 @@ class ScrcpyServer {
 
         if (first == null || first.isEmpty) {
           appLogger.w(
-            '[ScrcpyServer] Attempt $attempt: no data (server still '
-            'warming up?), retrying…',
+            '[ScrcpyServer] Attempt $attempt: no data, retrying…',
           );
           await sub.cancel();
           await socket.close();
@@ -231,15 +250,30 @@ class ScrcpyServer {
           'received ${first.length} bootstrap byte(s)',
         );
 
-        // Swap the probe handler to forward all bytes to the parser, and
-        // replay what we already buffered.
+        var totalBytes = 0;
+        var logCountdown = 5;
         sub
-          ..onData((data) => _parser.feed(Uint8List.fromList(data)))
-          ..onDone(() => appLogger.w('[ScrcpyServer] Socket closed'))
+          ..onData((data) {
+            totalBytes += data.length;
+            if (logCountdown > 0) {
+              appLogger.d(
+                '[ScrcpyServer] onData chunk=${data.length} '
+                'total=$totalBytes',
+              );
+              logCountdown -= 1;
+            }
+            _parser.feed(Uint8List.fromList(data));
+          })
+          ..onDone(
+            () => appLogger.w(
+              '[ScrcpyServer] Socket closed (totalBytes=$totalBytes)',
+            ),
+          )
           ..onError(
             (Object e, StackTrace st) =>
                 appLogger.e('[ScrcpyServer] Socket error', e, st),
           );
+        totalBytes += first.length;
         _parser.feed(first);
         _socket = socket;
         _socketSubscription = sub;
@@ -266,8 +300,10 @@ class ScrcpyServer {
     await _socketSubscription?.cancel();
     await _socket?.close();
     _serverProcess?.kill();
+    
+    final cleanupPort = _actualPort ?? port;
     try {
-      await adbClient.forwardRemove('tcp:$port', deviceId: deviceId);
+      await adbClient.forwardRemove('tcp:$cleanupPort', deviceId: deviceId);
     } catch (_) {}
     _parser.close();
   }
