@@ -10,31 +10,35 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   // This "test" is designed to be run as a standalone app to allow
   // real interaction with ADB and a physical device.
-  runApp(const MaterialApp(
-    home: Scaffold(
-      body: Center(child: Text('Check console for Scrcpy logs')),
+  runApp(
+    const MaterialApp(
+      home: Scaffold(
+        body: Center(child: Text('Check console for Scrcpy logs')),
+      ),
     ),
-  ));
+  );
 
   testMain();
 }
 
 Future<void> testMain() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   appLogger.i('--- Starting Manual Scrcpy Test ---');
 
-  final adbClient = AdbClient();
-  
+  const adbClient = AdbClient();
+
   try {
     // 1. Find a device
     final devices = await adbClient.listDevices();
     if (devices.isEmpty) {
-      appLogger.e('No devices found! Please connect an Android phone via USB/ADB.');
+      appLogger
+          .e('No devices found! Please connect an Android phone via USB/ADB.');
       return;
     }
 
-    final deviceId = devices.first.serial;
+    // final deviceId = devices.first.serial;
+    const deviceId = '';
     appLogger.i('Using device: $deviceId');
 
     // 2. Initialize ScrcpyServer
@@ -45,27 +49,40 @@ Future<void> testMain() async {
 
     // 3. Listen to metadata and packets
     server.metadata.listen((meta) {
-      appLogger.i('[TEST] Received Metadata: ${meta.deviceName} (${meta.width}x${meta.height})');
+      appLogger.i(
+        '[TEST] Received Metadata: ${meta.deviceName} (${meta.width}x${meta.height})',
+      );
     });
 
     var packetCount = 0;
     server.packets.listen((packet) {
       packetCount++;
       if (packetCount % 60 == 0) {
-        appLogger.d('[TEST] Received $packetCount packets... (latest size: ${packet.data.length})');
+        appLogger.d(
+          '[TEST] Received $packetCount packets... (latest size: ${packet.data.length})',
+        );
       }
     });
 
     // 4. Start the server
     appLogger.i('[TEST] Starting server...');
     await server.start();
-    
+
     appLogger.i('[TEST] Server started successfully!');
     appLogger.i('[TEST] Proxy Media URL: ${server.proxyUrl}');
     appLogger.i('[TEST] Waiting for proxy to be ready (SPS/PPS buffered)...');
-    
+
     await server.proxyReady.timeout(const Duration(seconds: 10));
-    appLogger.i('[TEST] Proxy is READY. You can now open ${server.proxyUrl} in VLC.');
+    appLogger.i(
+      '[TEST] Proxy is READY. You can now open ${server.proxyUrl} in VLC.',
+    );
+
+    const testTerminal =
+        '/opt/homebrew/bin/vlc --network-caching=0 --clock-jitter=0 --clock-synchro=0 tcp://127.0.0.1:55794';
+
+    appLogger
+      ..i('testTerminal')
+      ..i(testTerminal);
 
     // 5. Run for 30 seconds then stop
     appLogger.i('[TEST] Running for 30 seconds before cleanup...');
@@ -74,7 +91,7 @@ Future<void> testMain() async {
     appLogger.i('[TEST] Stopping server...');
     await server.stop();
     appLogger.i('[TEST] Test completed successfully.');
-    
+
     exit(0);
   } catch (e, st) {
     appLogger.e('[TEST] Fatal error during test', e, st);

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:autoglm_core/autoglm_core.dart';
 import 'package:autoglm_desktop/providers/scrcpy_provider.dart';
 import 'package:autoglm_scrcpy/autoglm_scrcpy.dart';
@@ -74,29 +76,61 @@ class _ScreenView extends StatefulWidget {
 class _ScreenViewState extends State<_ScreenView> {
   late final Player player;
   late final VideoController controller;
+  StreamSubscription<dynamic>? _errorSubscription;
+  StreamSubscription<dynamic>? _videoParamsSubscription;
 
   @override
   void initState() {
     super.initState();
-    player = Player();
+    // 1. Initialize Player with low-latency config
+    player = Player(
+      configuration: const PlayerConfiguration(
+        bufferSize: 0,
+      ),
+    );
 
+    // 2. Setup Native properties for raw H264 stream
     if (player.platform is NativePlayer) {
       final native = player.platform! as NativePlayer;
+      
+      // Force lavf demuxer and h264 format to completely bypass auto-detection
+      native.setProperty('demuxer', 'lavf');
       native.setProperty('demuxer-lavf-format', 'h264');
-      native.setProperty(
-        'demuxer-lavf-o',
-        'probesize=524288,analyzeduration=500000,fflags=+nobuffer+discardcorrupt',
-      );
-      native.setProperty('cache', 'no');
-      native.setProperty('cache-pause', 'no');
-      native.setProperty('low-latency', 'yes');
+      
+      // Disable audio to prevent mp3float or other audio probing errors
+      native.setProperty('aid', 'no');
+      
+      // Latency & Sync optimizations
+      native.setProperty('profile', 'low-latency');
       native.setProperty('untimed', 'yes');
-      native.setProperty('hr-seek', 'no');
-      native.setProperty('video-latency-hacks', 'yes');
+      native.setProperty('cache', 'no');
+      native.setProperty('video-sync', 'desync');
+      native.setProperty('vd-lavc-threads', '1');
+      native.setProperty('load-unsafe-playlists', 'yes');
+
+      // Fix colorspace issues (like ycgco) causing renderer/filter errors
+      native.setProperty('vf', 'setparams=colorspace=bt709');
     }
 
-    controller = VideoController(player);
+    _errorSubscription = player.stream.error.listen((error) {
+      appLogger.e('[ChatPage] Player Error: $error');
+    });
 
+    _videoParamsSubscription = player.stream.videoParams.listen((params) {
+      appLogger.i(
+        '[ChatPage] Video Params: ${params.w}x${params.h} aspect=${params.aspect}',
+      );
+    });
+
+    // 3. Create VideoController
+    controller = VideoController(
+      player,
+      configuration: const VideoControllerConfiguration(
+        enableHardwareAcceleration: true,
+      ),
+    );
+
+    // 4. Open the stream when proxy is ready
     final url = widget.server.proxyUrl;
     appLogger.i('[ChatPage] Waiting for scrcpy proxy to be ready…');
     widget.server.proxyReady.then(
@@ -113,17 +147,39 @@ class _ScreenViewState extends State<_ScreenView> {
 
   @override
   void dispose() {
+    _errorSubscription?.cancel();
+    _videoParamsSubscription?.cancel();
     player.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Video(
-        controller: controller,
-        controls: (state) => const SizedBox.shrink(),
-      ),
+    return Consumer(
+      builder: (context, ref, child) {
+        final metadataAsync = ref.watch(scrcpyMetadataProvider);
+
+        return metadataAsync.when(
+          data: (meta) {
+            final aspectRatio = (meta.width > 0 && meta.height > 0)
+                ? meta.width / meta.height
+                : 9 / 16;
+
+            return Center(
+              child: AspectRatio(
+                aspectRatio: aspectRatio,
+                child: Video(
+                  controller: controller,
+                  controls: (state) => const SizedBox.shrink(),
+                  fill: Colors.transparent,
+                ),
+              ),
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, st) => Center(child: Text('Metadata Error: $e')),
+        );
+      },
     );
   }
 }

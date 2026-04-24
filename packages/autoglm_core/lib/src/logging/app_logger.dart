@@ -11,34 +11,34 @@ import 'package:path/path.dart' as p;
 /// construction time. Files are named `autoglm-YYYY-MM-DD.log`. Old files
 /// are pruned to the most recent 5 by mtime.
 class AppLogger {
-  /// Creates an [AppLogger] that writes to [logsDir].
-  AppLogger(Directory logsDir) : _logsDir = logsDir {
-    if (!_logsDir.existsSync()) {
-      _logsDir.createSync(recursive: true);
+  /// Creates an [AppLogger] that optionally writes to [logsDir].
+  /// If [logsDir] is null, it only writes to console.
+  AppLogger(Directory? logsDir) : _logsDir = logsDir {
+    final List<pkg.LogOutput> outputs = [pkg.ConsoleOutput()];
+
+    if (_logsDir != null) {
+      if (!_logsDir!.existsSync()) {
+        _logsDir!.createSync(recursive: true);
+      }
+      final today = DateTime.now();
+      final fileName = 'autoglm-${_dateStamp(today)}.log';
+      _file = File(p.join(_logsDir!.path, fileName));
+      outputs.add(_FileOutput(_file!));
+      _pruneOldFiles();
     }
-    final today = DateTime.now();
-    final fileName = 'autoglm-${_dateStamp(today)}.log';
-    _file = File(p.join(_logsDir.path, fileName));
+
     _logger = pkg.Logger(
       level: kDebugMode ? pkg.Level.all : pkg.Level.info,
-      printer: pkg.PrettyPrinter(
-        methodCount: 2,
-        errorMethodCount: 8,
-        lineLength: 120,
+      printer: pkg.SimplePrinter(
         colors: stdout.hasTerminal,
-        printEmojis: true,
         printTime: true,
       ),
-      output: pkg.MultiOutput([
-        pkg.ConsoleOutput(),
-        _FileOutput(_file),
-      ]),
+      output: pkg.MultiOutput(outputs),
     );
-    _pruneOldFiles();
   }
 
-  final Directory _logsDir;
-  late final File _file;
+  final Directory? _logsDir;
+  File? _file;
   late final pkg.Logger _logger;
 
   static AppLogger? _instance;
@@ -90,8 +90,9 @@ class AppLogger {
   }
 
   void _pruneOldFiles() {
+    if (_logsDir == null) return;
     try {
-      final files = _logsDir
+      final files = _logsDir!
           .listSync()
           .whereType<File>()
           .where((f) => p.basename(f.path).startsWith('autoglm-'))
@@ -119,8 +120,10 @@ class AppLogger {
 
 /// Initializes the global [appLogger]. Safe to call multiple times in the same
 /// isolate — subsequent calls overwrite the singleton.
-void initAppLogger({required String logsDir}) {
-  AppLogger._instance = AppLogger(Directory(logsDir));
+///
+/// If [logsDir] is null, logs will only be printed to the terminal.
+void initAppLogger({String? logsDir}) {
+  AppLogger._instance = AppLogger(logsDir != null ? Directory(logsDir) : null);
 }
 
 /// Top-level logger singleton. Throws a [StateError] if called before

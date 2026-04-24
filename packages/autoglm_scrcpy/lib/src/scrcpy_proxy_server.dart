@@ -2,62 +2,51 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:autoglm_core/autoglm_core.dart';
 import 'package:autoglm_scrcpy/src/scrcpy_packet.dart';
 
-/// A proxy that serves H264 NALUs over HTTP for better player compatibility.
+/// A proxy that serves H264 NALUs over a raw TCP socket.
 class ScrcpyProxyServer {
-  HttpServer? _server;
+  ServerSocket? _server;
   StreamSubscription<ScrcpyPacket>? _subscription;
   
-  // Clients currently receiving the live HTTP stream.
-  final List<HttpResponse> _clients = [];
-  
-  // Clients waiting for the next I-Frame.
-  final List<HttpResponse> _pendingClients = [];
+  final List<Socket> _activeClients = [];
+  final List<Socket> _pendingClients = [];
   
   ScrcpyPacket? _configPacket;
   int _port = 0;
   final Completer<void> _readyCompleter = Completer<void>();
 
-  /// The HTTP URL that the media player should connect to.
-  String get mediaUrl => 'http://127.0.0.1:$_port/live';
+  /// The URL for the media player to connect to.
+  String get proxyUrl => 'tcp://127.0.0.1:$_port';
 
-  /// Resolves after at least one SPS/PPS has been seen.
+  /// Resolves when the proxy has received the configuration packet (SPS/PPS).
   Future<void> get ready => _readyCompleter.future;
 
-  /// Starts the proxy server by listening on a local HTTP port.
+  /// Starts the proxy server.
   Future<void> start(Stream<ScrcpyPacket> packets) async {
-    _server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    _server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
     _port = _server!.port;
-    print('[ScrcpyProxyServer] HTTP Media server ready on $mediaUrl');
+    appLogger.i('[ScrcpyProxyServer] TCP Media server ready on $proxyUrl');
 
-    _server!.listen((HttpRequest request) async {
-      if (request.uri.path != '/live') {
-        request.response.statusCode = HttpStatus.notFound;
-        await request.response.close();
-        return;
-      }
-
-      print('[ScrcpyProxyServer] New HTTP client from ${request.connectionInfo?.remoteAddress.address}');
+    _server!.listen((Socket client) {
+      appLogger.i('[ScrcpyProxyServer] New TCP client connected: ${client.remoteAddress}:${client.remotePort}');
+      // New clients wait for the next IDR keyframe to ensure they start at a decodable point.
+      _pendingClients.add(client);
       
-      final response = request.response;
-      response.headers.contentType = ContentType('video', 'h264');
-      response.headers.set('Connection', 'keep-alive');
-      response.headers.set('Cache-Control', 'no-cache');
-      
-      _pendingClients.add(response);
-      
-      // Keep connection open until client disconnects
-      unawaited(response.done.then((_) {
-        print('[ScrcpyProxyServer] HTTP client disconnected');
-        _activeClients_remove(response);
-      }).catchError((Object _) {
-        _activeClients_remove(response);
-      }));
+      client.listen(
+        (_) {}, // ignore incoming
+        onDone: () => _removeClient(client),
+        onError: (e) {
+          appLogger.w('[ScrcpyProxyServer] Client error: $e');
+          _removeClient(client);
+        },
+      );
     });
 
     _subscription = packets.listen((packet) {
       if (packet.type == ScrcpyPacketType.configuration) {
+        appLogger.i('[ScrcpyProxyServer] Received configuration packet (${packet.data.length} bytes)');
         _configPacket = packet;
         if (!_readyCompleter.isCompleted) _readyCompleter.complete();
         return;
@@ -68,62 +57,71 @@ class ScrcpyProxyServer {
       _appendPacketToBuilder(builder, packet);
       final rawData = builder.takeBytes();
 
+      // 1. If it's a keyframe and we have config, "welcome" any pending clients
       if (isKey && _configPacket != null) {
         final burstBuilder = BytesBuilder();
         _appendPacketToBuilder(burstBuilder, _configPacket!);
         _appendPacketToBuilder(burstBuilder, packet);
         final burstData = burstBuilder.takeBytes();
 
-        for (final response in List<HttpResponse>.from(_pendingClients)) {
-          try {
-            response.add(burstData);
-            _clients.add(response);
-          } catch (_) {
-            response.close();
+        if (_pendingClients.isNotEmpty) {
+          appLogger.i('[ScrcpyProxyServer] IDR Keyframe: flushing ${_pendingClients.length} pending clients');
+          for (final client in List<Socket>.from(_pendingClients)) {
+            try {
+              client.add(burstData);
+              _activeClients.add(client);
+            } catch (e) {
+              client.destroy();
+            }
           }
+          _pendingClients.clear();
         }
-        _pendingClients.clear();
       }
 
-      // Broadcast live data
-      for (final response in List<HttpResponse>.from(_clients)) {
+      // 2. Always send the current packet to all ALREADY active clients
+      for (final client in List<Socket>.from(_activeClients)) {
         try {
-          response.add(rawData);
+          client.add(rawData);
         } catch (e) {
-          response.close();
-          _clients.remove(response);
+          appLogger.w('[ScrcpyProxyServer] Client write error: $e');
+          client.destroy();
+          _activeClients.remove(client);
         }
       }
     });
   }
 
-  void _activeClients_remove(HttpResponse res) {
-    _clients.remove(res);
-    _pendingClients.remove(res);
+  void _removeClient(Socket client) {
+    _activeClients.remove(client);
+    _pendingClients.remove(client);
   }
 
   void _appendPacketToBuilder(BytesBuilder builder, ScrcpyPacket packet) {
     if (packet.data.isEmpty) return;
-    if (!_hasStartCode(packet.data)) {
+    
+    final data = packet.data;
+    bool hasStartCode = false;
+    if (data.length >= 3 && data[0] == 0 && data[1] == 0 && data[2] == 1) {
+      hasStartCode = true;
+    } else if (data.length >= 4 && data[0] == 0 && data[1] == 0 && data[2] == 0 && data[3] == 1) {
+      hasStartCode = true;
+    }
+
+    if (!hasStartCode) {
       builder.add(const [0x00, 0x00, 0x00, 0x01]);
     }
     builder.add(packet.data);
   }
 
-  bool _hasStartCode(Uint8List data) {
-    if (data.length < 4) return false;
-    return (data[0] == 0 && data[1] == 0 && data[2] == 0 && data[3] == 1) ||
-           (data[0] == 0 && data[1] == 0 && data[2] == 1);
-  }
-
+  /// Stops the proxy server.
   Future<void> stop() async {
     await _subscription?.cancel();
-    for (final res in [..._clients, ..._pendingClients]) {
-      await res.close();
+    for (final client in [..._activeClients, ..._pendingClients]) {
+      client.destroy();
     }
-    _clients.clear();
+    _activeClients.clear();
     _pendingClients.clear();
-    await _server?.close(force: true);
+    await _server?.close();
     _server = null;
     _configPacket = null;
   }

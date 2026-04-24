@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:autoglm_adb/autoglm_adb.dart';
 import 'package:autoglm_core/autoglm_core.dart';
@@ -38,12 +37,13 @@ class ScrcpyServer {
   final ScrcpyProxyServer _proxy;
   final ScrcpyStreamParser _parser;
 
+  int? _scid;
   Process? _serverProcess;
   Socket? _socket;
   StreamSubscription<Uint8List>? _socketSubscription;
 
   /// The URL for the media player to connect to.
-  String get proxyUrl => _proxy.mediaUrl;
+  String get proxyUrl => _proxy.proxyUrl;
 
   /// Resolves after the proxy has buffered SPS/PPS + first keyframe, so a
   /// media client opening [proxyUrl] immediately gets a decodable burst.
@@ -64,8 +64,8 @@ class ScrcpyServer {
 
     // 2. Pick a random scid so the abstract socket name is unique per run
     //    (scrcpy server parses `scid=` as HEX and binds `scrcpy_%08x`).
-    final scid = Random.secure().nextInt(0x7FFFFFFF);
-    final scidHex = scid.toRadixString(16).padLeft(8, '0');
+    _scid = Random.secure().nextInt(0x7FFFFFFF);
+    final scidHex = _scid!.toRadixString(16).padLeft(8, '0');
     final socketName = 'scrcpy_$scidHex';
 
     // 3. Setup port forwarding with retry logic for port conflicts
@@ -76,7 +76,7 @@ class ScrcpyServer {
 
     // 5. Subscribe the proxy BEFORE any data flows so SPS/PPS isn't missed.
     await _proxy.start(_parser.packets);
-    appLogger.i('[ScrcpyServer] Proxy Media URL: ${_proxy.mediaUrl}');
+    appLogger.i('[ScrcpyServer] Proxy Media URL: ${_proxy.proxyUrl}');
 
     // 6. Connect to the forwarded port (retries while server is warming up).
     await _connect();
@@ -89,19 +89,25 @@ class ScrcpyServer {
 
     try {
       appLogger.d('[ScrcpyServer] Extracting server asset: $assetPath');
-      
+
       // Load from assets
       final data = await rootBundle.load(assetPath);
       final bytes = data.buffer.asUint8List();
 
       // Write to a temporary file on the host machine
-      final tempDir = await getTemporaryDirectory();
-      final localTempFile = File(p.join(tempDir.path, 'scrcpy-server-v$version.jar'));
+      Directory tempDir;
+      try {
+        tempDir = await getTemporaryDirectory();
+      } catch (_) {
+        tempDir = Directory.systemTemp;
+      }
+      final localTempFile =
+          File(p.join(tempDir.path, 'scrcpy-server-v$version.jar'));
       await localTempFile.writeAsBytes(bytes, flush: true);
 
       appLogger.d('[ScrcpyServer] Pushing server to device: $remotePath');
       await adbClient.push(localTempFile.path, remotePath, deviceId: deviceId);
-      
+
       // Clean up local temp file
       await localTempFile.delete();
     } catch (e, st) {
@@ -112,12 +118,14 @@ class ScrcpyServer {
 
   Future<void> _setupForwardWithRetry(String socketName) async {
     const maxRetries = 10;
-    int currentPort = port;
+    var currentPort = port;
 
     for (var i = 0; i < maxRetries; i++) {
       try {
-        appLogger.d('[ScrcpyServer] Setting up forward: tcp:$currentPort -> localabstract:$socketName');
-        
+        appLogger.d(
+          '[ScrcpyServer] Setting up forward: tcp:$currentPort -> localabstract:$socketName',
+        );
+
         // Always try to remove any stale forward on this port first
         try {
           await adbClient.forwardRemove('tcp:$currentPort', deviceId: deviceId);
@@ -131,11 +139,16 @@ class ScrcpyServer {
         _actualPort = currentPort;
         return;
       } catch (e) {
-        appLogger.w('[ScrcpyServer] Failed to forward on port $currentPort, retrying...', e);
+        appLogger.w(
+          '[ScrcpyServer] Failed to forward on port $currentPort, retrying...',
+          e,
+        );
         currentPort++;
       }
     }
-    throw Exception('Failed to setup port forwarding after $maxRetries attempts');
+    throw Exception(
+      'Failed to setup port forwarding after $maxRetries attempts',
+    );
   }
 
   Future<void> _runServer(String scidHex) async {
@@ -161,14 +174,15 @@ class ScrcpyServer {
       version,
       'scid=$scidHex',
       'tunnel_forward=true',
+      'video_codec=h264', // Force H264
       'audio=false',
       'control=false',
       'cleanup=true',
       'list_encoders=false',
       'list_displays=false',
       'send_dummy_byte=true',
-      'key_frame_interval=2', // Force I-Frame every 2 seconds
-      'power_on=true',        // Ensure screen is on
+      'video_codec_options=i-frame-interval=1', // I-Frame every 1 second
+      'power_on=true', // Ensure screen is on
     ];
 
     appLogger.d('[ScrcpyServer] Executing: adb ${args.join(' ')}');
@@ -191,11 +205,13 @@ class ScrcpyServer {
       }
     });
 
-    unawaited(_serverProcess!.exitCode.then((code) async {
-      appLogger.w('[ScrcpyServer] server process exited with code $code');
-      _parser.close();
-      await _proxy.stop();
-    }));
+    unawaited(
+      _serverProcess!.exitCode.then((code) async {
+        appLogger.w('[ScrcpyServer] server process exited with code $code');
+        _parser.close();
+        await _proxy.stop();
+      }),
+    );
 
     await Future<void>.delayed(const Duration(seconds: 1));
   }
@@ -237,7 +253,7 @@ class ScrcpyServer {
 
         if (first == null || first.isEmpty) {
           appLogger.w(
-            '[ScrcpyServer] Attempt $attempt: no data, retrying…',
+            '[ScrcpyServer] Attempt $attempt: no dummy byte received, retrying…',
           );
           await sub.cancel();
           await socket.close();
@@ -246,9 +262,15 @@ class ScrcpyServer {
         }
 
         appLogger.i(
-          '[ScrcpyServer] Tunnel ready after $attempt attempt(s); '
-          'received ${first.length} bootstrap byte(s)',
+          '[ScrcpyServer] Tunnel dummy byte received, sending bootstrap (scid: $_scid)',
         );
+
+        // scrcpy 3.0 bootstrap: scid (4 bytes) + tunnel_forward (1 byte)
+        final bootstrap = ByteData(5);
+        bootstrap.setInt32(0, _scid!);
+        bootstrap.setUint8(4, 1); // 1 = tunnel_forward=true
+        socket.add(bootstrap.buffer.asUint8List());
+        await socket.flush();
 
         var totalBytes = 0;
         var logCountdown = 5;
@@ -273,8 +295,12 @@ class ScrcpyServer {
             (Object e, StackTrace st) =>
                 appLogger.e('[ScrcpyServer] Socket error', e, st),
           );
-        totalBytes += first.length;
-        _parser.feed(first);
+
+        // Feed initial bytes AFTER dummy byte to parser if they contain anything beyond dummy
+        if (first.length > 1) {
+          _parser.feed(Uint8List.fromList(first.sublist(1)));
+        }
+
         _socket = socket;
         _socketSubscription = sub;
         return;
@@ -300,7 +326,7 @@ class ScrcpyServer {
     await _socketSubscription?.cancel();
     await _socket?.close();
     _serverProcess?.kill();
-    
+
     final cleanupPort = _actualPort ?? port;
     try {
       await adbClient.forwardRemove('tcp:$cleanupPort', deviceId: deviceId);

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:autoglm_core/autoglm_core.dart';
@@ -49,27 +50,29 @@ class ScrcpyStreamParser {
 
   void _process() {
     if (!_headerParsed) {
-      // Scrcpy v3 protocol with send_dummy_byte=true:
-      // 1 byte dummy
-      // 64 bytes device name
+      // Scrcpy protocol bootstrap metadata:
+      // (Dummy byte is already consumed by ScrcpyServer)
+      // 64 bytes device name (null-terminated/padded)
       // 4 bytes codec id + 4 bytes width + 4 bytes height
 
-      const headerSize = 1 + 64 + 12; // dummy + name + codec + resolution
+      const headerSize = 64 + 12; // name + codec + resolution
       if (_buffer.length < headerSize) {
         appLogger.d(
-          '[ScrcpyStreamParser] Waiting for header: '
+          '[ScrcpyStreamParser] Waiting for metadata header: '
           '${_buffer.length}/$headerSize bytes',
         );
         return;
       }
 
-      // Skip dummy byte
-      final nameBytes = Uint8List.fromList(_buffer.sublist(1, 65));
-      final deviceName =
-          String.fromCharCodes(nameBytes.takeWhile((c) => c != 0));
+      // Read device name (64 bytes)
+      final nameBytes = Uint8List.fromList(_buffer.sublist(0, 64));
+      // Use Utf8Decoder with allowMalformed: true to avoid crashes
+      final deviceName = const Utf8Decoder(allowMalformed: true)
+          .convert(nameBytes.takeWhile((c) => c != 0).toList());
 
+      // Read codec info (12 bytes)
       final bd = ByteData.sublistView(
-        Uint8List.fromList(_buffer.sublist(65, headerSize)),
+        Uint8List.fromList(_buffer.sublist(64, headerSize)),
       );
       final codecId = bd.getUint32(0);
       final width = bd.getUint32(4);
@@ -90,6 +93,7 @@ class ScrcpyStreamParser {
       _headerParsed = true;
     }
 
+
     // Process packets: 8 bytes PTS + 4 bytes Length + payload
     while (_buffer.length >= 12) {
       final bd = ByteData.sublistView(
@@ -106,12 +110,12 @@ class ScrcpyStreamParser {
       // Bits 63 and 62 of PTS are special:
       // Bit 63 (1 << 63): CONFIG (SPS/PPS)
       // Bit 62 (1 << 62): KEYFRAME
-      const ptsConfig = 1 << 63;
-      const ptsKeyframe = 1 << 62;
+      const ptsConfig = 0x8000000000000000;
+      const ptsKeyframe = 0x4000000000000000;
 
       if ((ptsRaw & ptsConfig) != 0) {
         appLogger.i(
-          '[ScrcpyStreamParser] CONFIG packet (SPS/PPS): $length bytes',
+          '[ScrcpyStreamParser] CONFIG packet (SPS/PPS): $length bytes (ptsRaw: 0x${ptsRaw.toRadixString(16)})',
         );
         _controller.add(
           ScrcpyPacket(
@@ -124,11 +128,11 @@ class ScrcpyStreamParser {
         final pts = ptsRaw & ~ptsKeyframe;
         if (isKey) {
           appLogger.i(
-            '[ScrcpyStreamParser] KEYFRAME packet: $length bytes, pts=$pts',
+            '[ScrcpyStreamParser] KEYFRAME packet: $length bytes, pts=$pts (ptsRaw: 0x${ptsRaw.toRadixString(16)})',
           );
         } else if (_videoPacketLogCountdown > 0) {
           appLogger.d(
-            '[ScrcpyStreamParser] video packet: $length bytes, pts=$pts',
+            '[ScrcpyStreamParser] video packet: $length bytes, pts=$pts (ptsRaw: 0x${ptsRaw.toRadixString(16)})',
           );
           _videoPacketLogCountdown -= 1;
         }
