@@ -125,7 +125,7 @@ class HarnessController extends ChangeNotifier {
 
   void _onControllerTick() {
     _tickCount++;
-    if (_tickCount % 30 != 0) return;
+    if (_tickCount % 10 != 0) return;
     final c = _videoController;
     if (c == null) return;
     final v = c.value;
@@ -133,7 +133,14 @@ class HarnessController extends ChangeNotifier {
     final pos = v.position.inMilliseconds;
     final buffered =
         v.buffered.isNotEmpty ? v.buffered.last.end.inMilliseconds - pos : 0;
-    _log('tick: pos=${pos}ms bufferedAhead=${buffered}ms');
+    
+    // If we are more than 100ms behind, try to jump to the tail
+    if (buffered > 100 && aggressive) {
+      _log('Catching up: ${buffered}ms behind...');
+      c.seekTo(v.buffered.last.end);
+    } else {
+      _log('tick: pos=${pos}ms bufferedAhead=${buffered}ms');
+    }
   }
 
   Future<void> stop() async {
@@ -240,9 +247,11 @@ class RawH264Proxy {
         '${req.connectionInfo?.remotePort}',
       );
 
-      // New clients buffer in `_pending` until the next IDR — they need the
-      // GOP prefix + keyframe to start decoding cleanly.
-      _pending.add(res);
+      // Immediately send cached config if available to reduce startup delay
+      if (_configAnnexB != null) {
+        res.add(_configAnnexB!);
+      }
+      _active.add(res);
 
       unawaited(
         res.done.then((_) => _drop(res)).catchError((Object e) {

@@ -123,21 +123,8 @@ class _ScrcpyTestScreenState extends State<ScrcpyTestScreen> {
       _addLog('Metadata: ${meta.deviceName} (${meta.width}x${meta.height})');
     });
 
-    // var packetCount = 0;
-    // _server!.packets.listen((packet) {
-    //   packetCount++;
-    //   if (packetCount % 60 == 0) {
-    //     _addLog('Received $packetCount packets...');
-    //   }
-    // });
-
     _addLog('Starting server...');
     await _server!.start();
-
-    // _addLog('Server started! Proxy: ${_server!.proxyUrl}');
-
-    // _addLog('Waiting for proxy to be ready...');
-    // await _server!.proxyReady.timeout(const Duration(seconds: 10));
 
     _addLog('READY: Opening media_kit stream in app...');
     _addLog('Opening TCP stream: ${_server!.proxyUrl}');

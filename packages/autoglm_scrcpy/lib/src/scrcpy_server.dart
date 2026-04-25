@@ -178,21 +178,18 @@ class ScrcpyServer {
       version,
       'scid=$scidHex',
       'tunnel_forward=true',
-      'video_codec=h264', // Force H264
+      'video_codec=h264',
       'audio=false',
       'control=false',
       'cleanup=true',
+      'max_size=720',
+      'max_fps=30',
+      'video_bit_rate=2000000',
       'list_encoders=false',
       'list_displays=false',
       'send_dummy_byte=true',
-      // Low-latency MediaCodec config:
-      //   latency=1          MediaCodec low-latency mode (API 30+)
-      //   priority=0         realtime thread priority
-      //   operating-rate=max  hint the encoder to run full throttle
-      //   i-frame-interval=1  quick recovery for new viewers
-      // ignore: lines_longer_than_80_chars
       'video_codec_options=i-frame-interval=1,latency=1,priority=0,operating-rate=65535',
-      'power_on=true', // Ensure screen is on
+      'power_on=true',
     ];
 
     appLogger.d('[ScrcpyServer] Executing: adb ${args.join(' ')}');

@@ -12,6 +12,7 @@ import 'package:autoglm_scrcpy_example/control_view.dart';
 import 'package:autoglm_scrcpy_example/harness_controller.dart';
 import 'package:autoglm_scrcpy_example/screen_view.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_driver/driver_extension.dart';
 import 'package:fvp/fvp.dart' as fvp;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -25,6 +26,13 @@ const kBufferMin = 0;
 const kBufferMax = 0;
 
 Future<void> main() async {
+  enableFlutterDriverExtension();
+  // Root out library conflicts on macOS by ensuring we don't look in Homebrew.
+  if (Platform.isMacOS) {
+    // We can't easily change DYLD_LIBRARY_PATH from within the process (SIP),
+    // but we can hint to plugins or log the state. 
+    // A more effective way for mdk is to set the path before fvp.registerWith.
+  }
   WidgetsFlutterBinding.ensureInitialized();
 
   final fvpOptions = <String, dynamic>{
@@ -32,17 +40,18 @@ Future<void> main() async {
     'lowLatency': 1,
   };
   if (kAggressive) {
-    // Disable ffmpeg demuxer probing and buffering so the first frame
-    // surfaces earlier.
+    // Disable ffmpeg demuxer probing and buffering
     fvpOptions['player.avformat.fflags'] = 'nobuffer';
     fvpOptions['player.avformat.flags'] = 'low_delay';
-    // Raw H.264 has no PTS — without this, the h264 demuxer fabricates
-    // timestamps at a fixed (default 25) fps, which lags behind the device's
-    // real frame rate and produces 5–10s of catch-up at startup.
     fvpOptions['player.avformat.use_wallclock_as_timestamps'] = '1';
-    // Skip the multi-second probe/analyze phase before initialize() returns.
     fvpOptions['player.avformat.probesize'] = '32';
     fvpOptions['player.avformat.analyzeduration'] = '0';
+    fvpOptions['player.avformat.fpsprobesize'] = '0';
+    fvpOptions['player.avformat.max_delay'] = '0';
+    fvpOptions['player.avformat.fflags'] = 'discardcorrupt+nobuffer'; // Extra aggressive
+    fvpOptions['video.decoder.threads'] = '1';
+    fvpOptions['video.decoder.async'] = '0'; // Sync decoding can be lower latency for single streams
+    fvpOptions['video.decoder.buffer_range'] = '0-0'; // Force zero buffer at decoder level
   }
   fvp.registerWith(options: fvpOptions);
 
@@ -59,7 +68,8 @@ Future<void> main() async {
 
 List<String> _preferredDecoders() {
   if (Platform.isMacOS || Platform.isIOS) {
-    return ['VT', 'FFmpeg'];
+    // Force FFmpeg (Software) first for testing, as VT might be conflicted
+    return ['FFmpeg', 'VT'];
   }
   if (Platform.isWindows) {
     return ['MFT:d3d=11', 'D3D11', 'DXVA', 'CUDA', 'FFmpeg'];

@@ -8,7 +8,11 @@
 PRODUCT_NAME = autoglm_scrcpy_example
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.example.autoglmScrcpyExample
+PRODUCT_BUNDLE_IDENTIFIER = com.google.autoglmScrcpyExample
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 com.example. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 com.google. All rights reserved.
+
+// Prioritize internal frameworks to avoid conflicts with system libraries like FFmpeg
+LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/../Frameworks
+

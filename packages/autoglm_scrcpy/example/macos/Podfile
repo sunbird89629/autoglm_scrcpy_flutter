@@ -38,5 +38,15 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
+    target.build_configurations.each do |config|
+      # Aggressively filter LIBRARY_SEARCH_PATHS to ensure NO system/homebrew paths sneak in.
+      # This is the root-cause fix for FFmpeg library duplication.
+      if config.build_settings['LIBRARY_SEARCH_PATHS']
+        paths = Array(config.build_settings['LIBRARY_SEARCH_PATHS'])
+        filtered_paths = paths.reject { |path| path.include?('homebrew') || path.include?('/usr/local/lib') }
+        config.build_settings['LIBRARY_SEARCH_PATHS'] = filtered_paths
+      end
+      config.build_settings['HEADER_SEARCH_PATHS'] = ['$(inherited)']
+    end
   end
 end
