@@ -25,6 +25,7 @@ import 'package:video_player/video_player.dart';
 const kAggressive = true;
 
 const kBufferMin = 0;
+
 /// Buffer window in ms: 0 = aggressive, 50 = compromise, 200 = conservative.
 const kBufferMax = 0;
 
@@ -40,6 +41,13 @@ Future<void> main() async {
     // surfaces earlier.
     fvpOptions['player.avformat.fflags'] = 'nobuffer';
     fvpOptions['player.avformat.flags'] = 'low_delay';
+    // Raw H.264 has no PTS — without this, the h264 demuxer fabricates
+    // timestamps at a fixed (default 25) fps, which lags behind the device's
+    // real frame rate and produces 5–10s of catch-up at startup.
+    fvpOptions['player.avformat.use_wallclock_as_timestamps'] = '1';
+    // Skip the multi-second probe/analyze phase before initialize() returns.
+    fvpOptions['player.avformat.probesize'] = '32';
+    fvpOptions['player.avformat.analyzeduration'] = '0';
   }
   fvp.registerWith(options: fvpOptions);
 
@@ -77,8 +85,7 @@ class FvpScrcpyTestScreen extends StatefulWidget {
 }
 
 class _FvpScrcpyTestScreenState extends State<FvpScrcpyTestScreen> {
-  String get _title =>
-      'AutoGLM Scrcpy (fvp) — '
+  String get _title => 'AutoGLM Scrcpy (fvp) — '
       '${kAggressive ? "aggressive" : "conservative"} '
       '[$kBufferMin,${kBufferMax}ms]';
 

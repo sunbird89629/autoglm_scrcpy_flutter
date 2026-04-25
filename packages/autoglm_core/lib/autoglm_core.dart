@@ -1,7 +1,8 @@
 /// Shared models, settings, and logging for AutoGLM Flutter.
 library;
 
-export 'src/logging/app_logger.dart';
+export 'package:autoglm_logger/autoglm_logger.dart';
+
 export 'src/history/history_database.dart';
 export 'src/history/history_manager.dart';
 export 'src/models/history.dart';

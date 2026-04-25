@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:autoglm_core/src/logging/app_logger.dart';
 import 'package:autoglm_core/src/settings/settings.dart';
 import 'package:autoglm_core/src/settings/settings_repository.dart';
+import 'package:autoglm_logger/autoglm_logger.dart';
 
 /// Stores [Settings] as a single JSON file.
 ///
