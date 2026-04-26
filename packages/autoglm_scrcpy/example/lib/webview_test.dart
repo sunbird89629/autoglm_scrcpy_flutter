@@ -53,12 +53,56 @@ class _ScrcpyWebViewTestScreenState extends State<ScrcpyWebViewTestScreen> {
 
   void _addLog(String message) {
     debugPrint(message);
+    if (!mounted) return;
     setState(() {
       _logs.add(
         '${DateTime.now().toIso8601String().split('T').last.substring(0, 8)}: $message',
       );
     });
-    // Auto-scroll logs
+  }
+
+  void _handlePointerEvent(PointerEvent event, Size widgetSize) {
+    if (_server == null) return;
+
+    int action;
+    if (event is PointerDownEvent) {
+      action = ScrcpyAction.down;
+    } else if (event is PointerMoveEvent) {
+      action = ScrcpyAction.move;
+    } else if (event is PointerUpEvent) {
+      action = ScrcpyAction.up;
+    } else {
+      return;
+    }
+
+    _server!.sendControlMessage(
+      ScrcpyInjectTouchMessage(
+        action: action,
+        pointerId: event.pointer,
+        x: event.localPosition.dx.toInt(),
+        y: event.localPosition.dy.toInt(),
+        width: widgetSize.width.toInt(),
+        height: widgetSize.height.toInt(),
+        pressure: event.pressure,
+      ),
+    );
+  }
+
+  void _injectKey(int keycode) {
+    if (_server == null) return;
+    _addLog('Injecting keycode: $keycode');
+    _server!.sendControlMessage(
+      ScrcpyInjectKeyMessage(
+        action: ScrcpyAction.down,
+        keycode: keycode,
+      ),
+    );
+    _server!.sendControlMessage(
+      ScrcpyInjectKeyMessage(
+        action: ScrcpyAction.up,
+        keycode: keycode,
+      ),
+    );
   }
 
   Future<void> _startTest() async {
@@ -135,25 +179,45 @@ class _ScrcpyWebViewTestScreenState extends State<ScrcpyWebViewTestScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   color: Colors.indigo[800],
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Column(
                     children: [
-                      ElevatedButton.icon(
-                        onPressed: _isRunning ? null : _startTest,
-                        icon: const Icon(Icons.play_arrow),
-                        label: const Text('Start'),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: _isRunning ? null : _startTest,
+                            icon: const Icon(Icons.play_arrow),
+                            label: const Text('Start'),
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton.icon(
+                            key: const Key('stop_button'),
+                            onPressed: _isRunning ? _stopTest : null,
+                            icon: const Icon(Icons.stop),
+                            label: const Text('Stop'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red[900],
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      ElevatedButton.icon(
-                        key: const Key('stop_button'),
-                        onPressed: _isRunning ? _stopTest : null,
-                        icon: const Icon(Icons.stop),
-                        label: const Text('Stop'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red[900],
-                          foregroundColor: Colors.white,
+                      if (_isRunning) ...[
+                        const Divider(color: Colors.white24, height: 24),
+                        const Text(
+                          'Remote Control',
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
                         ),
-                      ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _controlBtn(Icons.arrow_back, () => _injectKey(4)), // AKEYCODE_BACK
+                            _controlBtn(Icons.circle_outlined, () => _injectKey(3)), // AKEYCODE_HOME
+                            _controlBtn(Icons.menu, () => _injectKey(187)), // AKEYCODE_APP_SWITCH
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -179,53 +243,82 @@ class _ScrcpyWebViewTestScreenState extends State<ScrcpyWebViewTestScreen> {
             ),
           ),
 
-          // Right Side: InAppWebView
+          // Right Side: InAppWebView with GestureDetector
           Expanded(
             child: Container(
               color: Colors.black,
-              child: InAppWebView(
-                initialSettings: InAppWebViewSettings(
-                  transparentBackground: true,
-                  useWideViewPort: true,
-                  loadWithOverviewMode: true,
-                  mediaPlaybackRequiresUserGesture: false,
-                  allowsInlineMediaPlayback: true,
-                  verticalScrollBarEnabled: false,
-                  horizontalScrollBarEnabled: false,
-                  supportZoom: false,
-                  disableVerticalScroll: true,
-                  disableHorizontalScroll: true,
-                ),
-                onWebViewCreated: (controller) {
-                  _webViewController = controller;
-                  // Register JS Handler for logs
-                  controller.addJavaScriptHandler(
-                    handlerName: 'logHandler',
-                    callback: (args) {
-                      _addLog('[WebView] ${args[0]}');
-                    },
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final widgetSize = Size(constraints.maxWidth, constraints.maxHeight);
+                  return Stack(
+                    children: [
+                      InAppWebView(
+                        initialSettings: InAppWebViewSettings(
+                          transparentBackground: true,
+                          useWideViewPort: true,
+                          loadWithOverviewMode: true,
+                          mediaPlaybackRequiresUserGesture: false,
+                          allowsInlineMediaPlayback: true,
+                          verticalScrollBarEnabled: false,
+                          horizontalScrollBarEnabled: false,
+                          supportZoom: false,
+                          disableVerticalScroll: true,
+                          disableHorizontalScroll: true,
+                        ),
+                        onWebViewCreated: (controller) {
+                          _webViewController = controller;
+                          // Register JS Handler for logs
+                          controller.addJavaScriptHandler(
+                            handlerName: 'logHandler',
+                            callback: (args) {
+                              _addLog('[WebView] ${args[0]}');
+                            },
+                          );
+                          
+                          // If server already started, load URL
+                          if (_server != null) {
+                            controller.loadUrl(
+                              urlRequest: URLRequest(url: WebUri(_server!.playerUrl)),
+                            );
+                          }
+                        },
+                        onConsoleMessage: (controller, consoleMessage) {
+                          _addLog('[Console] ${consoleMessage.message}');
+                        },
+                        onLoadStop: (controller, url) {
+                          _addLog('WebView Loaded: $url');
+                        },
+                        onReceivedError: (controller, request, error) {
+                          _addLog('WebView Error: ${error.description}');
+                        },
+                      ),
+                      // Overlay to capture gestures
+                      Positioned.fill(
+                        child: Listener(
+                          behavior: HitTestBehavior.opaque,
+                          onPointerDown: (e) => _handlePointerEvent(e, widgetSize),
+                          onPointerMove: (e) => _handlePointerEvent(e, widgetSize),
+                          onPointerUp: (e) => _handlePointerEvent(e, widgetSize),
+                        ),
+                      ),
+                    ],
                   );
-                  
-                  // If server already started, load URL
-                  if (_server != null) {
-                    controller.loadUrl(
-                      urlRequest: URLRequest(url: WebUri(_server!.playerUrl)),
-                    );
-                  }
-                },
-                onConsoleMessage: (controller, consoleMessage) {
-                  _addLog('[Console] ${consoleMessage.message}');
-                },
-                onLoadStop: (controller, url) {
-                  _addLog('WebView Loaded: $url');
-                },
-                onReceivedError: (controller, request, error) {
-                  _addLog('WebView Error: ${error.description}');
                 },
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _controlBtn(IconData icon, VoidCallback onPressed) {
+    return IconButton(
+      icon: Icon(icon, color: Colors.white),
+      onPressed: onPressed,
+      style: IconButton.styleFrom(
+        backgroundColor: Colors.white10,
+        padding: const EdgeInsets.all(12),
       ),
     );
   }

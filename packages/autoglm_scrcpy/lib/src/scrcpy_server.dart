@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:autoglm_adb/autoglm_adb.dart';
 import 'package:autoglm_core/autoglm_core.dart';
+import 'package:autoglm_scrcpy/src/control_message.dart';
 import 'package:autoglm_scrcpy/src/scrcpy_packet.dart';
 import 'package:autoglm_scrcpy/src/scrcpy_proxy_server.dart';
 import 'package:autoglm_scrcpy/src/scrcpy_stream_parser.dart';
@@ -43,8 +45,9 @@ class ScrcpyServer {
 
   int? _scid;
   Process? _serverProcess;
-  Socket? _socket;
-  StreamSubscription<Uint8List>? _socketSubscription;
+  Socket? _videoSocket;
+  Socket? _controlSocket;
+  StreamSubscription<Uint8List>? _videoSubscription;
 
   /// The URL for the media player to connect to (MPEG-TS/HTTP).
   String get proxyUrl => _proxy.proxyUrl;
@@ -78,17 +81,15 @@ class ScrcpyServer {
       final webPlayerPath = await _prepareWebPlayer();
       await _pushServer();
 
-      // 2. Pick a random scid so the abstract socket name is unique per run
-      //    (scrcpy server parses `scid=` as HEX and binds `scrcpy_%08x`).
-      _scid = Random.secure().nextInt(0x7FFFFFFF);
-      final scidHex = _scid!.toRadixString(16).padLeft(8, '0');
-      final socketName = 'scrcpy_$scidHex';
+      // 2. Use scid 0 and socket name scrcpy_00000000 for simplicity
+      _scid = 0;
+      final socketName = 'scrcpy_00000000';
 
       // 3. Setup port forwarding with retry logic for port conflicts
       await _setupForwardWithRetry(socketName);
 
       // 4. Run the server process
-      await _runServer(scidHex);
+      await _runServer('00000000');
 
       // 5. Subscribe the proxy BEFORE any data flows so SPS/PPS isn't missed.
       await _proxy.start(_parser.packets);
@@ -97,10 +98,20 @@ class ScrcpyServer {
       appLogger.i('[ScrcpyServer] Web Player URL: $playerUrl');
 
       // 6. Connect to the forwarded port (retries while server is warming up).
-      await _connect();
+      await _connectAll();
     } finally {
       _isStarting = false;
     }
+  }
+
+  /// Sends a control message to the device.
+  void sendControlMessage(ScrcpyControlMessage message) {
+    final socket = _controlSocket;
+    if (socket == null) {
+      appLogger.w('[ScrcpyServer] Cannot send control message: Not connected');
+      return;
+    }
+    socket.add(message.toBinary());
   }
 
   Future<String> _prepareWebPlayer() async {
@@ -212,18 +223,18 @@ class ScrcpyServer {
       '/',
       'com.genymobile.scrcpy.Server',
       version,
-      'scid=$scidHex',
+      'scid=0',
       'tunnel_forward=true',
       'video_codec=h264',
       'audio=false',
-      'control=false',
+      'control=true',
       'cleanup=true',
       'max_size=1024',
       'max_fps=60',
       'video_bit_rate=6000000',
       'list_encoders=false',
       'list_displays=false',
-      'send_dummy_byte=true',
+      'send_dummy_byte=false',
       'video_codec_options=i-frame-interval=1,latency=1,profile=1',
       'power_on=true',
     ];
@@ -259,107 +270,64 @@ class ScrcpyServer {
     await Future<void>.delayed(const Duration(seconds: 1));
   }
 
-  Future<void> _connect() async {
-    const maxAttempts = 30;
-    const probeTimeout = Duration(seconds: 2);
-    const retryDelay = Duration(milliseconds: 500);
+  Future<void> _connectAll() async {
+    // Standard scrcpy 3.x bootstrap: [SCID (4 bytes)] + [tunnel_forward (1 byte)]
+    final bootstrap = ByteData(5);
+    bootstrap.setInt32(0, 0, Endian.big); // Use SCID 0 for simplicity
+    bootstrap.setUint8(4, 1); // tunnel_forward=true
+    final bootstrapBytes = bootstrap.buffer.asUint8List();
 
+    // 1. Video socket
+    _videoSocket = await _connectSocket('Video');
+    _videoSocket!.add(bootstrapBytes);
+    await _videoSocket!.flush();
+
+    var isFirstByteHandled = false;
+    _videoSubscription = _videoSocket!.listen(
+      (data) {
+        // Even if send_dummy_byte is false, scrcpy v3 might send a 0 byte on forward tunnel.
+        // We skip the first byte IF it is 0.
+        if (!isFirstByteHandled) {
+          isFirstByteHandled = true;
+          if (data.isNotEmpty && data[0] == 0) {
+            if (data.length > 1) _parser.feed(Uint8List.fromList(data.sublist(1)));
+            return;
+          }
+        }
+        _parser.feed(Uint8List.fromList(data));
+      },
+      onDone: () => appLogger.w('[ScrcpyServer] Video socket closed'),
+    );
+
+    // 2. Control socket
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    _controlSocket = await _connectSocket('Control');
+    _controlSocket!.add(bootstrapBytes);
+    await _controlSocket!.flush();
+
+    _controlSocket!.listen(
+      (data) => appLogger.d('[ScrcpyServer] Control data: ${data.length} bytes'),
+      onDone: () => appLogger.w('[ScrcpyServer] Control socket closed'),
+    );
+
+    appLogger.i('[ScrcpyServer] All sockets connected with SCID 0.');
+  }
+
+  Future<Socket> _connectSocket(String name) async {
+    const maxAttempts = 30;
+    const retryDelay = Duration(milliseconds: 500);
     final connectPort = _actualPort ?? port;
 
     for (var attempt = 1; attempt <= maxAttempts; attempt++) {
-      Socket? socket;
-      StreamSubscription<Uint8List>? sub;
       try {
-        appLogger.d(
-          '[ScrcpyServer] Connection attempt $attempt/$maxAttempts to '
-          'localhost:$connectPort',
-        );
-        socket = await Socket.connect('localhost', connectPort);
-
-        final probe = Completer<Uint8List?>();
-        sub = socket.listen(
-          (data) {
-            if (!probe.isCompleted) probe.complete(data);
-          },
-          onDone: () {
-            if (!probe.isCompleted) probe.complete(null);
-          },
-          onError: (Object e, StackTrace st) {
-            if (!probe.isCompleted) probe.completeError(e, st);
-          },
-        );
-
-        final first = await probe.future.timeout(
-          probeTimeout,
-          onTimeout: () => null,
-        );
-
-        if (first == null || first.isEmpty) {
-          appLogger.w(
-            '[ScrcpyServer] Attempt $attempt: no dummy byte received, retrying…',
-          );
-          await sub.cancel();
-          await socket.close();
-          await Future<void>.delayed(retryDelay);
-          continue;
-        }
-
-        appLogger.i(
-          '[ScrcpyServer] Tunnel dummy byte received, sending bootstrap (scid: $_scid)',
-        );
-
-        // scrcpy 3.0 bootstrap: scid (4 bytes) + tunnel_forward (1 byte)
-        final bootstrap = ByteData(5);
-        bootstrap.setInt32(0, _scid!);
-        bootstrap.setUint8(4, 1); // 1 = tunnel_forward=true
-        socket.add(bootstrap.buffer.asUint8List());
-        await socket.flush();
-
-        var totalBytes = 0;
-        var logCountdown = 5;
-        sub
-          ..onData((data) {
-            totalBytes += data.length;
-            if (logCountdown > 0) {
-              appLogger.d(
-                '[ScrcpyServer] onData chunk=${data.length} '
-                'total=$totalBytes',
-              );
-              logCountdown -= 1;
-            }
-            _parser.feed(Uint8List.fromList(data));
-          })
-          ..onDone(
-            () => appLogger.w(
-              '[ScrcpyServer] Socket closed (totalBytes=$totalBytes)',
-            ),
-          )
-          ..onError(
-            (Object e, StackTrace st) =>
-                appLogger.e('[ScrcpyServer] Socket error', e, st),
-          );
-
-        // Feed initial bytes AFTER dummy byte to parser if they contain anything beyond dummy
-        if (first.length > 1) {
-          _parser.feed(Uint8List.fromList(first.sublist(1)));
-        }
-
-        _socket = socket;
-        _socketSubscription = sub;
-        return;
+        appLogger.d('[ScrcpyServer] [$name] Connecting to localhost:$connectPort (attempt $attempt)');
+        return await Socket.connect('localhost', connectPort);
       } on Exception catch (e) {
-        await sub?.cancel();
-        await socket?.close();
-        if (attempt >= maxAttempts) {
-          appLogger.e(
-            '[ScrcpyServer] Failed to connect after $maxAttempts attempts',
-            e,
-          );
-          rethrow;
-        }
+        if (attempt >= maxAttempts) rethrow;
         await Future<void>.delayed(retryDelay);
       }
     }
+    throw Exception('Failed to connect to $name socket');
   }
 
   /// Stops the scrcpy server.
@@ -367,10 +335,12 @@ class ScrcpyServer {
     appLogger.i('[ScrcpyServer] Stopping for device: $deviceId');
     
     // 1. Stop data ingestion first
-    await _socketSubscription?.cancel();
-    _socketSubscription = null;
-    await _socket?.close();
-    _socket = null;
+    await _videoSubscription?.cancel();
+    _videoSubscription = null;
+    await _videoSocket?.close();
+    _videoSocket = null;
+    await _controlSocket?.close();
+    _controlSocket = null;
 
     // 2. Stop proxies
     await _proxy.stop();
