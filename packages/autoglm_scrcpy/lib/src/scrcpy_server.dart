@@ -8,6 +8,7 @@ import 'package:autoglm_core/autoglm_core.dart';
 import 'package:autoglm_scrcpy/src/scrcpy_packet.dart';
 import 'package:autoglm_scrcpy/src/scrcpy_proxy_server.dart';
 import 'package:autoglm_scrcpy/src/scrcpy_stream_parser.dart';
+import 'package:autoglm_scrcpy/src/scrcpy_websocket_server.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -20,6 +21,7 @@ class ScrcpyServer {
     required this.deviceId,
     this.port = 27183,
   })  : _proxy = ScrcpyProxyServer(),
+        _wsProxy = ScrcpyWebsocketServer(),
         _parser = ScrcpyStreamParser();
 
   /// The ADB client to use.
@@ -35,6 +37,7 @@ class ScrcpyServer {
   int? _actualPort;
 
   final ScrcpyProxyServer _proxy;
+  final ScrcpyWebsocketServer _wsProxy;
   final ScrcpyStreamParser _parser;
 
   int? _scid;
@@ -42,8 +45,11 @@ class ScrcpyServer {
   Socket? _socket;
   StreamSubscription<Uint8List>? _socketSubscription;
 
-  /// The URL for the media player to connect to.
+  /// The URL for the media player to connect to (MPEG-TS/HTTP).
   String get proxyUrl => _proxy.proxyUrl;
+
+  /// The URL for the web-based player (HTML/JS).
+  String get playerUrl => _wsProxy.playerUrl;
 
   /// Resolves after the proxy has buffered SPS/PPS + first keyframe, so a
   /// media client opening [proxyUrl] immediately gets a decodable burst.
@@ -63,7 +69,8 @@ class ScrcpyServer {
   Future<void> start() async {
     appLogger.i('[ScrcpyServer] Starting for device: $deviceId');
 
-    // 1. Prepare the server binary on the device
+    // 1. Prepare the server binary and web player on the host
+    final webPlayerPath = await _prepareWebPlayer();
     await _pushServer();
 
     // 2. Pick a random scid so the abstract socket name is unique per run
@@ -80,10 +87,31 @@ class ScrcpyServer {
 
     // 5. Subscribe the proxy BEFORE any data flows so SPS/PPS isn't missed.
     await _proxy.start(_parser.packets);
+    await _wsProxy.start(_parser.packets, staticPath: webPlayerPath);
     appLogger.i('[ScrcpyServer] Proxy Media URL: ${_proxy.proxyUrl}');
+    appLogger.i('[ScrcpyServer] Web Player URL: $playerUrl');
 
     // 6. Connect to the forwarded port (retries while server is warming up).
     await _connect();
+  }
+
+  Future<String> _prepareWebPlayer() async {
+    const assetPath = 'packages/autoglm_scrcpy/assets/web_player/index.html';
+    try {
+      appLogger.d('[ScrcpyServer] Extracting web player asset: $assetPath');
+      final data = await rootBundle.load(assetPath);
+      final bytes = data.buffer.asUint8List();
+
+      final tempDir = await getTemporaryDirectory();
+      final webDir = Directory(p.join(tempDir.path, 'autoglm_web_player'))
+        ..createSync(recursive: true);
+      final indexFile = File(p.join(webDir.path, 'index.html'));
+      await indexFile.writeAsBytes(bytes, flush: true);
+      return webDir.path;
+    } catch (e) {
+      appLogger.e('[ScrcpyServer] Failed to prepare web player', e);
+      rethrow;
+    }
   }
 
   Future<void> _pushServer() async {
@@ -182,19 +210,13 @@ class ScrcpyServer {
       'audio=false',
       'control=false',
       'cleanup=true',
-      'max_size=720',
-      'max_fps=30',
-      'video_bit_rate=2000000',
+      'max_size=1024',
+      'max_fps=60',
+      'video_bit_rate=4000000',
       'list_encoders=false',
       'list_displays=false',
       'send_dummy_byte=true',
-      // color-standard/range/transfer make MediaCodec stamp colour VUI into
-      // the SPS. Without them, scrcpy emits an untagged stream and mdk
-      // falls back to a default matrix that mismatches the encoder's
-      // (yellow → pink). 4 = BT601_NTSC, 2 = LIMITED, 3 = SDR_VIDEO.
-      'video_codec_options=i-frame-interval=1,latency=1,priority=0,'
-          'operating-rate=65535,color-standard=4,color-range=2,'
-          'color-transfer=3',
+      'video_codec_options=i-frame-interval=1,latency=1,profile=1',
       'power_on=true',
     ];
 
@@ -336,6 +358,7 @@ class ScrcpyServer {
   Future<void> stop() async {
     appLogger.i('[ScrcpyServer] Stopping for device: $deviceId');
     await _proxy.stop();
+    await _wsProxy.stop();
     await _socketSubscription?.cancel();
     await _socket?.close();
     _serverProcess?.kill();
