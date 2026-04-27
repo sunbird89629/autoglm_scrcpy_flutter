@@ -1,42 +1,38 @@
-import 'package:autoglm_scrcpy/autoglm_scrcpy.dart';
 import 'package:autoglm_scrcpy_example/webview/handlers/touch_handler.dart';
+import 'package:autoglm_scrcpy_example/webview/harness_scope.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 class ScreenView extends StatefulWidget {
-  const ScreenView({
-    required this.playerUrl,
-    required this.onLog,
-    required this.onTouch,
-  });
-
-  final String? playerUrl;
-  final ValueChanged<String> onLog;
-  final ValueChanged<ScrcpyInjectTouchMessage> onTouch;
+  const ScreenView();
 
   @override
   State<ScreenView> createState() => _ScreenViewState();
 }
 
 class _ScreenViewState extends State<ScreenView> {
-  InAppWebViewController? _controller;
-
+  InAppWebViewController? _webViewController;
+  String? _loadedUrl;
   late final TouchHandler _touchHandler = TouchHandler(
-    onTouch: widget.onTouch,
+    onTouch: (msg) => WebViewHarnessScope.of(context).sendTouch(msg),
   );
 
   @override
-  void didUpdateWidget(covariant ScreenView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final url = widget.playerUrl;
-    if (url != null && url != oldWidget.playerUrl) {
-      _controller?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final url = WebViewHarnessScope.of(context).playerUrl;
+    if (url != null && url != _loadedUrl) {
+      _loadedUrl = url;
+      _webViewController?.loadUrl(
+        urlRequest: URLRequest(url: WebUri(url)),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final controller = WebViewHarnessScope.of(context);
     return Container(
       color: Colors.black,
       child: InAppWebView(
@@ -53,34 +49,34 @@ class _ScreenViewState extends State<ScreenView> {
           disableVerticalScroll: true,
           disableHorizontalScroll: true,
         ),
-        onWebViewCreated: (controller) {
-          _controller = controller;
-          controller.addJavaScriptHandler(
+        onWebViewCreated: (ctrl) {
+          _webViewController = ctrl;
+          ctrl.addJavaScriptHandler(
             handlerName: 'logHandler',
             callback: (args) {
-              widget.onLog('[WebView] ${args[0]}');
+              controller.addLog('[WebView] ${args[0]}');
             },
           );
-          controller.addJavaScriptHandler(
+          ctrl.addJavaScriptHandler(
             handlerName: _touchHandler.handlerName,
             callback: _touchHandler.callback,
           );
 
-          final url = widget.playerUrl;
+          final url = controller.playerUrl;
           if (url != null) {
-            controller.loadUrl(
+            ctrl.loadUrl(
               urlRequest: URLRequest(url: WebUri(url)),
             );
           }
         },
-        onConsoleMessage: (controller, consoleMessage) {
-          widget.onLog('[Console] ${consoleMessage.message}');
+        onConsoleMessage: (ctrl, msg) {
+          controller.addLog('[Console] ${msg.message}');
         },
-        onLoadStop: (controller, url) {
-          widget.onLog('WebView Loaded: $url');
+        onLoadStop: (ctrl, url) {
+          controller.addLog('WebView Loaded: $url');
         },
-        onReceivedError: (controller, request, error) {
-          widget.onLog('WebView Error: ${error.description}');
+        onReceivedError: (ctrl, request, error) {
+          controller.addLog('WebView Error: ${error.description}');
         },
       ),
     );

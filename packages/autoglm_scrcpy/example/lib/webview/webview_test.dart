@@ -1,8 +1,9 @@
 import 'dart:async';
 
-import 'package:autoglm_adb/autoglm_adb.dart';
 import 'package:autoglm_core/autoglm_core.dart';
 import 'package:autoglm_scrcpy/autoglm_scrcpy.dart';
+import 'package:autoglm_scrcpy_example/webview/harness_controller.dart';
+import 'package:autoglm_scrcpy_example/webview/harness_scope.dart';
 import 'package:autoglm_scrcpy_example/webview/screen_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_driver/driver_extension.dart';
@@ -13,7 +14,6 @@ void launchWebView() async {
   enableFlutterDriverExtension();
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize the logger
   final tempDir = await getTemporaryDirectory();
   initAppLogger(logsDir: p.join(tempDir.path, 'autoglm_logs'));
 
@@ -34,222 +34,128 @@ class ScrcpyWebViewTestScreen extends StatefulWidget {
 }
 
 class _ScrcpyWebViewTestScreenState extends State<ScrcpyWebViewTestScreen> {
-  final List<String> _logs = [];
-  ScrcpyServer? _server;
-  bool _isRunning = false;
+  late final WebViewHarnessController _controller = WebViewHarnessController();
+  Timer? _autoStartTimer;
 
   @override
   void initState() {
     super.initState();
-    // Auto-start after a short delay for debugging
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted && !_isRunning) {
-        _startTest();
+    _autoStartTimer = Timer(const Duration(seconds: 2), () {
+      if (!_controller.isRunning) {
+        _controller.start();
       }
-    });
-  }
-
-  void _addLog(String message) {
-    debugPrint(message);
-    if (!mounted) return;
-    setState(() {
-      _logs.add(
-        '${DateTime.now().toIso8601String().split('T').last.substring(0, 8)}: $message',
-      );
-      if (_logs.length > 500) _logs.removeAt(0);
-    });
-  }
-
-  void _injectKey(int keycode) {
-    if (_server == null) return;
-    _addLog('Injecting keycode: $keycode');
-    _server!.sendControlMessage(
-      ScrcpyInjectKeyMessage(
-        action: ScrcpyAction.down,
-        keycode: keycode,
-      ),
-    );
-    _server!.sendControlMessage(
-      ScrcpyInjectKeyMessage(
-        action: ScrcpyAction.up,
-        keycode: keycode,
-      ),
-    );
-  }
-
-  Future<void> _startTest() async {
-    if (_isRunning) return;
-    setState(() {
-      _isRunning = true;
-      _logs.clear();
-    });
-
-    const adbClient = AdbClient();
-
-    _addLog('Searching for devices...');
-    final devices = await adbClient.devices();
-    if (devices.isEmpty) {
-      _addLog('Error: No devices found!');
-      setState(() => _isRunning = false);
-      return;
-    }
-
-    final deviceId = devices.first;
-    _addLog('Using device: $deviceId');
-
-    final server = ScrcpyServer(
-      adbClient: adbClient,
-      deviceId: deviceId,
-    );
-
-    _addLog('Starting scrcpy server...');
-    await server.start();
-
-    if (!mounted) {
-      await server.stop();
-      return;
-    }
-
-    setState(() => _server = server);
-    _addLog('Web Player URL: ${server.playerUrl}');
-  }
-
-  Future<void> _stopTest() async {
-    _addLog('--- Stop Button Clicked ---');
-    await _server?.stop();
-    _addLog('Server cleanup finished.');
-    setState(() {
-      _isRunning = false;
-      _server = null;
     });
   }
 
   @override
   void dispose() {
-    _server?.stop();
+    _autoStartTimer?.cancel();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF1E1E1E),
-      appBar: AppBar(
-        title: const Text('Scrcpy InAppWebView (AutoGLM)'),
-        backgroundColor: Colors.indigo[900],
-        foregroundColor: Colors.white,
-      ),
-      body: Row(
-        children: [
-          Expanded(
-            child: ScreenView(
-              playerUrl: _server?.playerUrl,
-              onLog: _addLog,
-              onTouch: (msg) => _server?.sendControlMessage(msg),
-            ),
-          ),
-          SizedBox(
-            width: 300,
-            child: _ControlView(
-              isRunning: _isRunning,
-              logs: _logs,
-              onStart: _startTest,
-              onStop: _stopTest,
-              onInjectKey: _injectKey,
-            ),
-          )
-        ],
+    return WebViewHarnessScope(
+      controller: _controller,
+      child: Scaffold(
+        backgroundColor: const Color(0xFF1E1E1E),
+        appBar: AppBar(
+          title: const Text('Scrcpy InAppWebView (AutoGLM)'),
+          backgroundColor: Colors.indigo[900],
+          foregroundColor: Colors.white,
+        ),
+        body: const Row(
+          children: [
+            Expanded(child: ScreenView()),
+            _ControlView(),
+          ],
+        ),
       ),
     );
   }
 }
 
 class _ControlView extends StatelessWidget {
-  const _ControlView({
-    required this.isRunning,
-    required this.logs,
-    required this.onStart,
-    required this.onStop,
-    required this.onInjectKey,
-  });
-
-  final bool isRunning;
-  final List<String> logs;
-  final VoidCallback onStart;
-  final VoidCallback onStop;
-  final ValueChanged<int> onInjectKey;
+  const _ControlView();
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          color: Colors.indigo[800],
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: isRunning ? null : onStart,
-                    icon: const Icon(Icons.play_arrow),
-                    label: const Text('Start'),
-                  ),
-                  const SizedBox(width: 12),
-                  ElevatedButton.icon(
-                    key: const Key('stop_button'),
-                    onPressed: isRunning ? onStop : null,
-                    icon: const Icon(Icons.stop),
-                    label: const Text('Stop'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red[900],
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-              if (isRunning) ...[
-                const Divider(color: Colors.white24, height: 24),
-                const Text(
-                  'Remote Control',
-                  style: TextStyle(color: Colors.white70, fontSize: 12),
-                ),
-                const SizedBox(height: 8),
+    final controller = WebViewHarnessScope.of(context);
+    return SizedBox(
+      width: 300,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            color: Colors.indigo[800],
+            child: Column(
+              children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _controlBtn(Icons.arrow_back,
-                        () => onInjectKey(ScrcpyKeycode.back)),
-                    _controlBtn(Icons.circle_outlined,
-                        () => onInjectKey(ScrcpyKeycode.home)),
-                    _controlBtn(
-                        Icons.menu, () => onInjectKey(ScrcpyKeycode.appSwitch)),
+                    ElevatedButton.icon(
+                      onPressed:
+                          controller.isRunning ? null : controller.start,
+                      icon: const Icon(Icons.play_arrow),
+                      label: const Text('Start'),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      key: const Key('stop_button'),
+                      onPressed:
+                          controller.isRunning ? controller.stop : null,
+                      icon: const Icon(Icons.stop),
+                      label: const Text('Stop'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red[900],
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
                   ],
                 ),
+                if (controller.isRunning) ...[
+                  const Divider(color: Colors.white24, height: 24),
+                  const Text(
+                    'Remote Control',
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _controlBtn(Icons.arrow_back,
+                          () => controller.injectKey(ScrcpyKeycode.back)),
+                      _controlBtn(Icons.circle_outlined,
+                          () => controller.injectKey(ScrcpyKeycode.home)),
+                      _controlBtn(Icons.menu,
+                          () => controller.injectKey(ScrcpyKeycode.appSwitch)),
+                    ],
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
-        Expanded(
-          child: Container(
-            width: double.infinity,
-            color: Colors.black,
-            padding: const EdgeInsets.all(8),
-            child: ListView.builder(
-              itemCount: logs.length,
-              itemBuilder: (context, index) => Text(
-                logs[index],
-                style: const TextStyle(
-                  color: Colors.blueAccent,
-                  fontSize: 10,
-                  fontFamily: 'monospace',
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              color: Colors.black,
+              padding: const EdgeInsets.all(8),
+              child: ListView.builder(
+                itemCount: controller.logs.length,
+                itemBuilder: (context, index) => Text(
+                  controller.logs[index],
+                  style: const TextStyle(
+                    color: Colors.blueAccent,
+                    fontSize: 10,
+                    fontFamily: 'monospace',
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
