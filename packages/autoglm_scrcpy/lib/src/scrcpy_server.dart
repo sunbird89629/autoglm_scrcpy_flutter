@@ -21,7 +21,9 @@ class ScrcpyServer {
     required this.adbClient,
     required this.deviceId,
     this.port = 27183,
-  })  : _proxy = ScrcpyProxyServer(),
+    StreamSink<List<int>>? controlSink,
+  })  : _controlSink = controlSink,
+        _proxy = ScrcpyProxyServer(),
         _wsProxy = ScrcpyWebsocketServer(),
         _parser = ScrcpyStreamParser();
 
@@ -44,6 +46,7 @@ class ScrcpyServer {
 
   int? _scid;
   Process? _serverProcess;
+  final StreamSink<List<int>>? _controlSink;
   Socket? _videoSocket;
   Socket? _controlSocket;
   StreamSubscription<Uint8List>? _videoSubscription;
@@ -105,12 +108,12 @@ class ScrcpyServer {
 
   /// Sends a control message to the device.
   void sendControlMessage(ScrcpyControlMessage message) {
-    final socket = _controlSocket;
-    if (socket == null) {
+    final sink = _controlSink ?? _controlSocket;
+    if (sink == null) {
       appLogger.w('[ScrcpyServer] Cannot send control message: Not connected');
       return;
     }
-    socket.add(message.toBinary());
+    sink.add(message.toBinary());
   }
 
   Future<String> _prepareWebPlayer() async {

@@ -11,24 +11,23 @@ void main() {
 
   test('sendControlMessage writes correct binary to injected sink', () async {
     final captured = <List<int>>[];
-    final controller = StreamController<List<int>>();
-    controller.stream.listen((data) => captured.add(data));
+    final controller = StreamController<List<int>>(sync: true);
+    controller.stream.listen(captured.add);
 
     final server = ScrcpyServer(
-      adbClient: AdbClient(),
+      adbClient: const AdbClient(),
       deviceId: 'test-device',
       controlSink: controller.sink,
     );
 
     server.sendControlMessage(
-      ScrcpyInjectTouchMessage(
+      const ScrcpyInjectTouchMessage(
         action: ScrcpyAction.down,
         pointerId: 1,
         x: 100,
         y: 200,
         width: 1080,
         height: 1920,
-        pressure: 1.0,
       ),
     );
 

@@ -159,15 +159,15 @@ class ScrcpyInjectScrollMessage extends ScrcpyControlMessage {
 
   @override
   Uint8List toBinary() {
-    final buffer = ByteData(25);
+    final buffer = ByteData(21);
     buffer.setUint8(0, type);
     buffer.setUint32(1, x);
     buffer.setUint32(5, y);
     buffer.setUint16(9, width);
     buffer.setUint16(11, height);
-    buffer.setInt32(13, hScroll);
-    buffer.setInt32(17, vScroll);
-    buffer.setUint32(21, buttons);
+    buffer.setInt16(13, hScroll);
+    buffer.setInt16(15, vScroll);
+    buffer.setUint32(17, buttons);
     return buffer.buffer.asUint8List();
   }
 }

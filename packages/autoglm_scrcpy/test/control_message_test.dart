@@ -168,7 +168,7 @@ void main() {
   });
 
   group('ScrcpyInjectScrollMessage', () {
-    test('binary layout is 25 bytes with signed scroll values', () {
+    test('binary layout is 21 bytes with signed 16-bit scroll values', () {
       const msg = ScrcpyInjectScrollMessage(
         x: 100,
         y: 200,
@@ -179,7 +179,7 @@ void main() {
       );
 
       final bytes = msg.toBinary();
-      expect(bytes.length, 25);
+      expect(bytes.length, 21);
       final bd = ByteData.sublistView(bytes);
 
       expect(bd.getUint8(0), 3); // type = 3
@@ -187,9 +187,9 @@ void main() {
       expect(bd.getUint32(5), 200); // y
       expect(bd.getUint16(9), 1080); // width
       expect(bd.getUint16(11), 1920); // height
-      expect(bd.getInt32(13), -10); // hScroll (signed)
-      expect(bd.getInt32(17), 50); // vScroll (signed)
-      expect(bd.getUint32(21), 0); // buttons
+      expect(bd.getInt16(13), -10); // hScroll
+      expect(bd.getInt16(15), 50); // vScroll
+      expect(bd.getUint32(17), 0); // buttons
     });
   });
 
