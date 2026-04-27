@@ -28,9 +28,12 @@ class ScrcpyWebsocketServer {
   String get playerUrl => 'http://127.0.0.1:$_port/index.html?ws=$wsUrl';
 
   /// Starts the WebSocket and Static HTTP server.
-  Future<void> start(Stream<ScrcpyPacket> packets, {required String staticPath}) async {
-    final wsHandler = webSocketHandler((WebSocketChannel webSocket, String? protocol) {
-      appLogger.i('[ScrcpyWebsocketServer] New WS client connected (protocol: $protocol)');
+  Future<void> start(Stream<ScrcpyPacket> packets,
+      {required String staticPath}) async {
+    final wsHandler =
+        webSocketHandler((WebSocketChannel webSocket, String? protocol) {
+      appLogger.i(
+          '[ScrcpyWebsocketServer] New WS client connected (protocol: $protocol)');
       _clients.add(webSocket);
 
       webSocket.stream.listen(
@@ -40,18 +43,18 @@ class ScrcpyWebsocketServer {
       );
     });
 
-    final staticHandler = createStaticHandler(staticPath, defaultDocument: 'index.html');
+    final staticHandler =
+        createStaticHandler(staticPath, defaultDocument: 'index.html');
 
-    final cascade = Cascade()
-        .add((Request request) {
-          if (request.url.path == 'ws') return wsHandler(request);
-          return Response.notFound('Not WS');
-        })
-        .add(staticHandler);
+    final cascade = Cascade().add((Request request) {
+      if (request.url.path == 'ws') return wsHandler(request);
+      return Response.notFound('Not WS');
+    }).add(staticHandler);
 
     _server = await io.serve(cascade.handler, InternetAddress.loopbackIPv4, 0);
     _port = _server!.port;
-    appLogger.i('[ScrcpyWebsocketServer] Server ready on http://127.0.0.1:$_port');
+    appLogger
+        .i('[ScrcpyWebsocketServer] Server ready on http://127.0.0.1:$_port');
 
     _subscription = packets.listen((packet) {
       if (packet.type == ScrcpyPacketType.configuration) {

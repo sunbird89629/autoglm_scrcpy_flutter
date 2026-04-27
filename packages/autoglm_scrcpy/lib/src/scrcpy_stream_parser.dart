@@ -99,7 +99,6 @@ class ScrcpyStreamParser {
       _headerParsed = true;
     }
 
-
     // Process packets: 8 bytes PTS + 4 bytes Length + payload
     while (_buffer.length >= 12) {
       final bd = ByteData.sublistView(

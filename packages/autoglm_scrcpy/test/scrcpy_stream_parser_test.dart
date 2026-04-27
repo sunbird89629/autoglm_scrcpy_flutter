@@ -31,7 +31,7 @@ void main() {
       final configPacket = Uint8List(12 + 5);
       final configBd = ByteData.sublistView(configPacket);
       // Set bit 63 for PTS_CONFIG
-      configBd.setUint8(0, 0x80); 
+      configBd.setUint8(0, 0x80);
       configBd.setUint32(8, 5);
       configPacket.setRange(12, 17, [1, 2, 3, 4, 5]);
 

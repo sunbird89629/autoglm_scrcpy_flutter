@@ -64,7 +64,7 @@ class MockAdbClient extends AdbClient {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize logger for tests
   final tempLogsDir = Directory.systemTemp.createTempSync('scrcpy_logs');
   initAppLogger(logsDir: tempLogsDir.path);

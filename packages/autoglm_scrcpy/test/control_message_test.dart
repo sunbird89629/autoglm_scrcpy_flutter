@@ -82,8 +82,11 @@ void main() {
           width: 1,
           height: 1,
         ).toBinary();
-        expect(bytes[1], expected,
-            reason: 'action $action should encode as $expected');
+        expect(
+          bytes[1],
+          expected,
+          reason: 'action $action should encode as $expected',
+        );
       }
     });
 
@@ -217,6 +220,9 @@ void expectPressure(double input, int expected) {
     pressure: input,
   );
   final bd = ByteData.sublistView(msg.toBinary());
-  expect(bd.getUint16(22), expected,
-      reason: 'pressure $input should encode as $expected');
+  expect(
+    bd.getUint16(22),
+    expected,
+    reason: 'pressure $input should encode as $expected',
+  );
 }

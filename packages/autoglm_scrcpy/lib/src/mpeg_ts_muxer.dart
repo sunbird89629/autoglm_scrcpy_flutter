@@ -21,12 +21,10 @@ class MpegTsMuxer {
   final Stopwatch _clock = Stopwatch()..start();
 
   /// 188-byte TS packet carrying PAT.
-  Uint8List buildPat() =>
-      _wrapPsi(_patSection(), _patPid, _advancePatCc());
+  Uint8List buildPat() => _wrapPsi(_patSection(), _patPid, _advancePatCc());
 
   /// 188-byte TS packet carrying PMT.
-  Uint8List buildPmt() =>
-      _wrapPsi(_pmtSection(), _pmtPid, _advancePmtCc());
+  Uint8List buildPmt() => _wrapPsi(_pmtSection(), _pmtPid, _advancePmtCc());
 
   /// Wraps a complete H.264 access unit (Annex-B bytes) into one or more
   /// TS packets. When [isKey] is true, a PCR and random-access indicator

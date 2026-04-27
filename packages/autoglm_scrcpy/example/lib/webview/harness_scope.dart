@@ -11,7 +11,8 @@ class WebViewHarnessScope extends InheritedNotifier<WebViewHarnessController> {
   static WebViewHarnessController of(BuildContext context) {
     final scope =
         context.dependOnInheritedWidgetOfExactType<WebViewHarnessScope>();
-    assert(scope != null, 'WebViewHarnessScope.of() called without an ancestor');
+    assert(
+        scope != null, 'WebViewHarnessScope.of() called without an ancestor');
     return scope!.notifier!;
   }
 }

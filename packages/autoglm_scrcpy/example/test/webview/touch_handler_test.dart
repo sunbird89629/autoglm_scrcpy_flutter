@@ -28,6 +28,4 @@ void main() {
 
     expect(received, isNull);
   });
-
-  
 }

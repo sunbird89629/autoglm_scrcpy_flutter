@@ -146,7 +146,7 @@ class HarnessController extends ChangeNotifier {
     final pos = v.position.inMilliseconds;
     final buffered =
         v.buffered.isNotEmpty ? v.buffered.last.end.inMilliseconds - pos : 0;
-    
+
     // If we are more than 100ms behind, try to jump to the tail
     if (buffered > 100 && aggressive) {
       _log('Catching up: ${buffered}ms behind...');
@@ -190,7 +190,6 @@ class HarnessController extends ChangeNotifier {
     super.dispose();
   }
 }
-
 
 /// Serves scrcpy's parsed Annex-B H.264 stream over HTTP, raw, with no
 /// container. libmdk's ffmpeg build carries the `h264` demuxer, so the URL
@@ -275,7 +274,10 @@ class RawH264Proxy {
       final prefix = _configAnnexB;
       final keyBytes = prefix == null
           ? frame
-          : (BytesBuilder(copy: false)..add(prefix)..add(frame)).takeBytes();
+          : (BytesBuilder(copy: false)
+                ..add(prefix)
+                ..add(frame))
+              .takeBytes();
 
       if (_pending.isNotEmpty) {
         _logger('IDR keyframe: flushing ${_pending.length} pending client(s)');

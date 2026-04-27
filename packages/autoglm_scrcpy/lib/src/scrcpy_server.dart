@@ -175,7 +175,11 @@ class ScrcpyServer with ClassLogger {
         );
 
         // Always try to remove any stale forward on this port first
-        await adbClient.forwardRemove('tcp:$currentPort', deviceId: deviceId);
+        try {
+          await adbClient.forwardRemove('tcp:$currentPort', deviceId: deviceId);
+        } catch (_) {
+          // Ignore if the listener was not found or other cleanup errors.
+        }
         await adbClient.forward(
           'tcp:$currentPort',
           'localabstract:$socketName',
