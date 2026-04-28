@@ -1,9 +1,17 @@
 import 'package:autoglm_scrcpy/autoglm_scrcpy.dart';
+import 'package:autoglm_scrcpy_example/webview/control_button.dart';
+import 'package:autoglm_scrcpy_example/webview/stats_panel.dart';
 import 'package:autoglm_scrcpy_example/webview/webview_scope.dart';
 import 'package:flutter/material.dart';
 
-class ControlPanel extends StatelessWidget {
-  const ControlPanel({super.key});
+class ControlView extends StatelessWidget {
+  const ControlView({super.key});
+
+  static const _navButtons = [
+    (Icons.arrow_back, ScrcpyKeycode.back),
+    (Icons.circle_outlined, ScrcpyKeycode.home),
+    (Icons.menu, ScrcpyKeycode.appSwitch),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -21,16 +29,14 @@ class ControlPanel extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     ElevatedButton.icon(
-                      onPressed:
-                          controller.isRunning ? null : controller.start,
+                      onPressed: controller.isRunning ? null : controller.start,
                       icon: const Icon(Icons.play_arrow),
                       label: const Text('Start'),
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
                       key: const Key('stop_button'),
-                      onPressed:
-                          controller.isRunning ? controller.stop : null,
+                      onPressed: controller.isRunning ? controller.stop : null,
                       icon: const Icon(Icons.stop),
                       label: const Text('Stop'),
                       style: ElevatedButton.styleFrom(
@@ -49,15 +55,15 @@ class ControlPanel extends StatelessWidget {
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _controlBtn(Icons.arrow_back,
-                          () => controller.injectKey(ScrcpyKeycode.back)),
-                      _controlBtn(Icons.circle_outlined,
-                          () => controller.injectKey(ScrcpyKeycode.home)),
-                      _controlBtn(Icons.menu,
-                          () => controller.injectKey(ScrcpyKeycode.appSwitch)),
-                    ],
+                    children: _navButtons
+                        .map((b) => ControlButton(
+                              icon: b.$1,
+                              onPressed: () => controller.injectKey(b.$2),
+                            ))
+                        .toList(),
                   ),
+                  const Divider(color: Colors.white24, height: 24),
+                  StatsPanel(stats: controller.stats),
                 ],
               ],
             ),
@@ -81,17 +87,6 @@ class ControlPanel extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _controlBtn(IconData icon, VoidCallback onPressed) {
-    return IconButton(
-      icon: Icon(icon, color: Colors.white),
-      onPressed: onPressed,
-      style: IconButton.styleFrom(
-        backgroundColor: Colors.white10,
-        padding: const EdgeInsets.all(12),
       ),
     );
   }

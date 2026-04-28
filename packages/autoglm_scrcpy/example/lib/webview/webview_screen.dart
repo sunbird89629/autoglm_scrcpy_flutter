@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:autoglm_core/autoglm_core.dart';
+import 'package:autoglm_scrcpy_example/webview/control_view.dart';
 import 'package:autoglm_scrcpy_example/webview/player_panel.dart';
-import 'package:autoglm_scrcpy_example/webview/control_panel.dart';
 import 'package:autoglm_scrcpy_example/webview/webview_controller.dart';
 import 'package:autoglm_scrcpy_example/webview/webview_scope.dart';
 import 'package:flutter/material.dart';
@@ -67,7 +67,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
         body: const Row(
           children: [
             Expanded(child: PlayerPanel()),
-            ControlPanel(),
+            ControlView(),
           ],
         ),
       ),

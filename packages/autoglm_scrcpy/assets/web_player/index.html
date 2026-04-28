@@ -1,47 +1,40 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AutoGLM Scrcpy Player (Advanced)</title>
+    <title>AutoGLM Scrcpy Player</title>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; color: #fff; font-family: 'JetBrains Mono', monospace; }
+        body { margin: 0; background: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; }
         canvas { max-width: 100%; max-height: 100%; background: #000; touch-action: none; }
-        #overlay { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.8); padding: 12px; border-radius: 8px; pointer-events: none; border: 1px solid #444; min-width: 180px; }
-        .row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; }
-        .val { font-weight: bold; color: #0f0; }
-        .warn { color: #f90; }
-        .crit { color: #f44; }
     </style>
 </head>
 <body>
-    <div id="overlay">
-        <div class="row">Status: <span id="status" class="val">Connecting...</span></div>
-        <div class="row">Latency: <span id="latency" class="val">--</span></div>
-        <div class="row">FPS: <span id="fps" class="val">0</span></div>
-        <div class="row">Buffered: <span id="buf" class="val">0</span></div>
-        <div class="row">Res: <span id="res" class="val">N/A</span></div>
-    </div>
     <canvas id="canvas"></canvas>
 
     <script>
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const ui = {
-            status: document.getElementById('status'),
-            latency: document.getElementById('latency'),
-            fps: document.getElementById('fps'),
-            buf: document.getElementById('buf'),
-            res: document.getElementById('res')
-        };
 
         let decoder = null;
         let frameCount = 0;
         let lastFpsUpdate = 0;
-        let timeOffset = 0; // Dart clock vs JS clock offset
+        let timeOffset = 0;
 
-        function updateUI(key, val, className = 'val') {
-            ui[key].textContent = val;
-            ui[key].className = className;
+        // Stats batched to Dart at ~4 Hz
+        const stats = { status: 'Connecting...', latencyMs: 0, fps: 0, buffered: 0, width: 0, height: 0, cssWidth: 0, cssHeight: 0 };
+        let statsDirty = false;
+
+        function updateStat(key, val) {
+            if (stats[key] !== val) { stats[key] = val; statsDirty = true; }
         }
+
+        setInterval(() => {
+            const rect = canvas.getBoundingClientRect();
+            updateStat('cssWidth', Math.round(rect.width));
+            updateStat('cssHeight', Math.round(rect.height));
+            if (!statsDirty) return;
+            statsDirty = false;
+            try { window.flutter_inappwebview.callHandler('statsHandler', JSON.stringify(stats)); } catch (_) {}
+        }, 250);
 
         async function initDecoder() {
             if (decoder) decoder.close();
@@ -50,59 +43,53 @@
                     if (canvas.width !== frame.displayWidth) {
                         canvas.width = frame.displayWidth;
                         canvas.height = frame.displayHeight;
-                        updateUI('res', `${canvas.width}x${canvas.height}`);
+                        updateStat('width', canvas.width);
+                        updateStat('height', canvas.height);
                     }
                     ctx.drawImage(frame, 0, 0);
-                    
-                    // Latency Calculation
+
                     const renderTime = performance.now();
                     const hostTime = (frame.timestamp / 1000) - timeOffset;
-                    const latency = renderTime - hostTime;
-                    
-                    let latClass = 'val';
-                    if (latency > 150) latClass = 'crit';
-                    else if (latency > 80) latClass = 'warn';
-                    updateUI('latency', `${Math.round(latency)}ms`, latClass);
+                    updateStat('latencyMs', Math.round(renderTime - hostTime));
 
                     frame.close();
                     frameCount++;
-                    
+
                     if (renderTime - lastFpsUpdate > 1000) {
-                        updateUI('fps', frameCount);
+                        updateStat('fps', frameCount);
                         frameCount = 0;
                         lastFpsUpdate = renderTime;
                     }
                 },
                 error: (e) => {
-                    updateUI('status', 'Error: ' + e.message, 'crit');
+                    updateStat('status', 'Error: ' + e.message);
                     setTimeout(location.reload, 2000);
                 }
             });
 
             decoder.configure({
-                codec: 'avc1.42E01E', 
+                codec: 'avc1.42E01E',
                 optimizeForLatency: true,
                 hardwareAcceleration: 'prefer-hardware'
             });
-            updateUI('status', 'Decoder Ready');
+            updateStat('status', 'Decoder Ready');
         }
 
-        // Pointer-to-Flutter forwarding (works for mouse, touch, and pen).
-        // touch* events do not fire on desktop browsers; pointer events unify
-        // all input sources, so we use them everywhere.
         function sendPointerEvent(action, e, rect) {
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            // Report raw DOM values only; coordinate mapping is done in Flutter.
+            const cssX = Math.round(e.clientX - rect.left);
+            const cssY = Math.round(e.clientY - rect.top);
+            const cssW = Math.round(rect.width);
+            const cssH = Math.round(rect.height);
+            const internalW = canvas.width || 0;
+            const internalH = canvas.height || 0;
             const pressure = action === 1 ? 0 : (e.pressure > 0 ? e.pressure : 1.0);
-            // Use canvas internal resolution (video frame size) for scrcpy
-            // coordinate normalization, NOT the CSS layout size.
-            const cw = canvas.width || rect.width;
-            const ch = canvas.height || rect.height;
             try {
                 window.flutter_inappwebview.callHandler('touchHandler',
                     action, e.pointerId,
-                    Math.round(x), Math.round(y),
-                    Math.round(cw), Math.round(ch),
+                    cssX, cssY,
+                    cssW, cssH,
+                    internalW, internalH,
                     pressure);
             } catch (_) {}
         }
@@ -114,8 +101,6 @@
         });
 
         canvas.addEventListener('pointermove', (e) => {
-            // Only forward when a button is pressed (active drag/touch),
-            // mirrors the touchmove semantics.
             if (e.buttons === 0 && e.pointerType === 'mouse') return;
             e.preventDefault();
             sendPointerEvent(2, e, canvas.getBoundingClientRect());
@@ -137,7 +122,7 @@
             ws.binaryType = 'arraybuffer';
 
             ws.onopen = () => {
-                updateUI('status', 'WS Connected');
+                updateStat('status', 'WS Connected');
                 initDecoder();
             };
 
@@ -145,39 +130,28 @@
                 if (!decoder || decoder.state !== 'configured') return;
 
                 const dv = new DataView(event.data);
-                const hostUs = Number(dv.getBigUint64(0)); // BigInt needed for 64bit
+                const hostUs = Number(dv.getBigUint64(0));
                 const naluData = new Uint8Array(event.data, 8);
 
-                // Sync clocks on the first few packets
                 const jsNow = performance.now();
                 const currentOffset = (hostUs / 1000) - jsNow;
                 if (timeOffset === 0) timeOffset = currentOffset;
-                else timeOffset = timeOffset * 0.9 + currentOffset * 0.1; // Smooth sync
+                else timeOffset = timeOffset * 0.9 + currentOffset * 0.1;
 
-                // WebCodecs Queue Management (Catch-up)
-                if (decoder.decodeQueueSize > 5) {
-                    // If queue is building up, we are lagging.
-                    // The browser will drop frames internally if we're lucky, 
-                    // but we should avoid feeding more if it's too much.
-                    updateUI('buf', decoder.decodeQueueSize, 'warn');
-                } else {
-                    updateUI('buf', decoder.decodeQueueSize);
-                }
+                updateStat('buffered', decoder.decodeQueueSize);
 
                 try {
                     const chunk = new EncodedVideoChunk({
                         type: isKeyFrame(naluData) ? 'key' : 'delta',
-                        timestamp: (hostUs), // Microseconds
+                        timestamp: hostUs,
                         data: naluData
                     });
                     decoder.decode(chunk);
-                } catch (e) {
-                    // Silently catch decode feeding errors during init
-                }
+                } catch (e) {}
             };
 
             ws.onclose = () => {
-                updateUI('status', 'Disconnected', 'crit');
+                updateStat('status', 'Disconnected');
                 setTimeout(() => location.reload(), 2000);
             };
         }
@@ -185,8 +159,9 @@
         function isKeyFrame(data) {
             for (let i = 0; i < 20; i++) {
                 if (data[i] === 0 && data[i+1] === 0 && (data[i+2] === 1 || (data[i+2] === 0 && data[i+3] === 1))) {
-                    const type = data[i + (data[i+2] === 1 ? 3 : 4)] & 0x1F;
-                    if (type === 7 || type === 5) return true;
+                    const nalType = data[i + (data[i+2] === 1 ? 3 : 4)] & 0x1F;
+                    if (nalType === 7 || nalType === 5) return true;
+                    if (nalType === 1) return false; // non-IDR slice frame is never a keyframe
                 }
             }
             return false;

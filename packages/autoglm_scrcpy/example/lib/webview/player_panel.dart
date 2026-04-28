@@ -1,4 +1,5 @@
 import 'package:autoglm_scrcpy_example/webview/handlers/touch_handler.dart';
+import 'package:autoglm_scrcpy_example/webview/webview_controller.dart';
 import 'package:autoglm_scrcpy_example/webview/webview_scope.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -35,6 +36,7 @@ class _PlayerPanelState extends State<PlayerPanel> {
     final controller = WebViewScope.of(context);
     return Container(
       color: Colors.black,
+      alignment: Alignment.center,
       child: InAppWebView(
         initialSettings: InAppWebViewSettings(
           isInspectable: kDebugMode,
@@ -60,6 +62,14 @@ class _PlayerPanelState extends State<PlayerPanel> {
           ctrl.addJavaScriptHandler(
             handlerName: _touchHandler.handlerName,
             callback: _touchHandler.callback,
+          );
+          ctrl.addJavaScriptHandler(
+            handlerName: 'statsHandler',
+            callback: (args) {
+              if (args.isNotEmpty && args[0] is String) {
+                controller.updateStats(StreamStats.fromJson(args[0] as String));
+              }
+            },
           );
 
           final url = controller.playerUrl;

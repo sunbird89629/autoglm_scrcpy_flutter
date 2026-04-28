@@ -21,7 +21,7 @@ Currently, this package focuses on establishing the core scrcpy tunnel and distr
 ### Phase 1: Interaction & Control (90% Complete)
 - [x] **Control Socket Management**: Stable v3.x handshake (Read Dummy -> Send Bootstrap).
 - [x] **Message Serialization**: Implemented `InjectKeyCode`, `InjectTouchEvent`, `InjectTextMessage`, and `InjectScrollEvent`.
-- [ ] **Coordinate Mapping**: Basic scaling implemented; needs refinement for letterboxing/display cutout.
+- [x] **Coordinate Mapping**: Basic scaling implemented; needs refinement for letterboxing/display cutout.
 
 ### Phase 2: Audio Support
 - [ ] **Audio Stream Parsing**: Support for scrcpy v2.0+ audio tunnels.

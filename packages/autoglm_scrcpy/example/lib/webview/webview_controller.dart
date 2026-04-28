@@ -1,9 +1,54 @@
 import 'dart:collection';
+import 'dart:convert';
 
 import 'package:autoglm_adb/autoglm_adb.dart';
 import 'package:autoglm_scrcpy/autoglm_scrcpy.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/material.dart';
+
+class StreamStats {
+  String status;
+  int latencyMs;
+  int fps;
+  int buffered;
+  int width;
+  int height;
+  int cssWidth;
+  int cssHeight;
+  int deviceWidth;
+  int deviceHeight;
+
+  StreamStats({
+    this.status = 'Connecting...',
+    this.latencyMs = 0,
+    this.fps = 0,
+    this.buffered = 0,
+    this.width = 0,
+    this.height = 0,
+    this.cssWidth = 0,
+    this.cssHeight = 0,
+    this.deviceWidth = 0,
+    this.deviceHeight = 0,
+  });
+
+  factory StreamStats.fromJson(String json) {
+    final map = jsonDecode(json) as Map<String, dynamic>;
+    return StreamStats(
+      status: map['status'] as String? ?? '',
+      latencyMs: (map['latencyMs'] as num?)?.toInt() ?? 0,
+      fps: (map['fps'] as num?)?.toInt() ?? 0,
+      buffered: (map['buffered'] as num?)?.toInt() ?? 0,
+      width: (map['width'] as num?)?.toInt() ?? 0,
+      height: (map['height'] as num?)?.toInt() ?? 0,
+      cssWidth: (map['cssWidth'] as num?)?.toInt() ?? 0,
+      cssHeight: (map['cssHeight'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  String get resolution => width > 0 && height > 0 ? '${width}x$height' : 'N/A';
+  String get cssResolution => cssWidth > 0 && cssHeight > 0 ? '${cssWidth}x$cssHeight' : 'N/A';
+  String get deviceResolution => deviceWidth > 0 && deviceHeight > 0 ? '${deviceWidth}x$deviceHeight' : 'N/A';
+}
 
 class WebViewController extends ChangeNotifier {
   final List<String> _logs = [];
@@ -11,6 +56,16 @@ class WebViewController extends ChangeNotifier {
 
   bool _isRunning = false;
   bool get isRunning => _isRunning;
+
+  StreamStats _stats = StreamStats();
+  StreamStats get stats => _stats;
+
+  void updateStats(StreamStats s) {
+    s.deviceWidth = _stats.deviceWidth;
+    s.deviceHeight = _stats.deviceHeight;
+    _stats = s;
+    _scheduleNotify();
+  }
 
   ScrcpyServer? _server;
   String? get playerUrl => _server?.playerUrl;
@@ -21,10 +76,11 @@ class WebViewController extends ChangeNotifier {
   void addLog(String message) {
     debugPrint(message);
     if (_disposed) return;
-    _logs.add(
-      '${DateTime.now().toIso8601String().split('T').last.substring(0, 8)}: '
-      '$message',
-    );
+    final now = DateTime.now();
+    final ts = '${now.hour.toString().padLeft(2, '0')}:'
+        '${now.minute.toString().padLeft(2, '0')}:'
+        '${now.second.toString().padLeft(2, '0')}';
+    _logs.add('$ts: $message');
     if (_logs.length > 500) _logs.removeRange(0, _logs.length - 500);
     _scheduleNotify();
   }
@@ -63,6 +119,20 @@ class WebViewController extends ChangeNotifier {
 
     final deviceId = devices.first;
     addLog('Using device: $deviceId');
+
+    // Needed for touch coordinate mapping from canvas CSS space to device pixels.
+    try {
+      final result = await adbClient.shell(['wm', 'size'], deviceId: deviceId);
+      final out = result.stdout.toString().trim();
+      final match = RegExp(r'(\d+)x(\d+)').firstMatch(out);
+      if (match != null) {
+        _stats.deviceWidth = int.parse(match.group(1)!);
+        _stats.deviceHeight = int.parse(match.group(2)!);
+        addLog('Device resolution: ${_stats.deviceResolution}');
+      }
+    } catch (e) {
+      addLog('Failed to get device resolution: $e');
+    }
 
     final server = ScrcpyServer(
       adbClient: adbClient,
