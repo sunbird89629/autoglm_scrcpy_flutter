@@ -77,7 +77,6 @@ class WebViewController extends ChangeNotifier {
   }
 
   ScrcpyServer? _server;
-  String? get playerUrl => _server?.playerUrl;
 
   bool _disposed = false;
   bool _needsNotify = false;
@@ -167,11 +166,6 @@ class WebViewController extends ChangeNotifier {
     _server!.sendControlMessage(
       ScrcpyInjectKeyMessage(action: ScrcpyAction.up, keycode: keycode),
     );
-  }
-
-  void sendTouch(ScrcpyInjectTouchMessage msg) {
-    if (_disposed) return;
-    _server?.sendControlMessage(msg);
   }
 
   @override

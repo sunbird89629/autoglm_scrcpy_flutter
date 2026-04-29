@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:scrcpy_view_example/webview_controller.dart';
 
 class StatsPanel extends StatelessWidget {
-  const StatsPanel({required this.stats});
+  const StatsPanel({super.key, required this.stats});
 
   final StreamStats stats;
 
@@ -53,8 +53,9 @@ class StatsPanel extends StatelessWidget {
   }
 
   Color _statusColor(String status) {
-    if (status.startsWith('Error') || status == 'Disconnected')
+    if (status.startsWith('Error') || status == 'Disconnected') {
       return Colors.redAccent;
+    }
     if (status == 'Connecting...') return Colors.orangeAccent;
     return Colors.greenAccent;
   }
