@@ -1,5 +1,6 @@
 import 'dart:collection';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -53,6 +54,28 @@ class StreamStats {
       : 'N/A';
 }
 
+class _SafeAdbClient extends AdbClientAdapter {
+  _SafeAdbClient() : super.withPath();
+
+  @override
+  Future<ProcessResult> shell(
+    List<String> args, {
+    String? deviceId,
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    try {
+      return await super.shell(args, deviceId: deviceId, timeout: timeout);
+    } catch (e) {
+      final cmd = args.join(' ');
+      if (cmd.contains('pkill')) {
+        debugPrint('SafeAdbClient: Ignoring pkill failure: $e');
+        return ProcessResult(0, 0, '', '');
+      }
+      rethrow;
+    }
+  }
+}
+
 class WebViewController extends ChangeNotifier {
   WebViewController._();
   static final _instance = WebViewController._();
@@ -63,7 +86,7 @@ class WebViewController extends ChangeNotifier {
 
   bool _isRunning = false;
   bool get isRunning => _isRunning;
-  final adbClient = AdbClientAdapter.withPath();
+  final adbClient = _SafeAdbClient();
   final deviceId = "11081FDD4004DY";
 
   StreamStats _stats = StreamStats();
@@ -82,7 +105,7 @@ class WebViewController extends ChangeNotifier {
   bool _needsNotify = false;
 
   void addLog(String message) {
-    debugPrint(message);
+    debugPrint('APP_LOG: $message');
     if (_disposed) return;
     final now = DateTime.now();
     final ts = '${now.hour.toString().padLeft(2, '0')}:'
@@ -114,36 +137,44 @@ class WebViewController extends ChangeNotifier {
     _logs.clear();
     _notifyNow();
 
-    addLog('Searching for devices...');
+    addLog('Searching for devices (ID: $deviceId)...');
 
     try {
       final result = await adbClient.shell(['wm', 'size'], deviceId: deviceId);
       final out = result.stdout.toString().trim();
+      addLog('wm size output: $out');
       final match = RegExp(r'(\d+)x(\d+)').firstMatch(out);
       if (match != null) {
         _stats.deviceWidth = int.parse(match.group(1)!);
         _stats.deviceHeight = int.parse(match.group(2)!);
         addLog('Device resolution: ${_stats.deviceResolution}');
       }
-    } catch (e) {
+    } catch (e, s) {
       addLog('Failed to get device resolution: $e');
+      debugPrintStack(stackTrace: s);
     }
 
-    final server = ScrcpyServer(
-      adb: adbClient,
-      deviceId: deviceId,
-    );
+    try {
+      final server = ScrcpyServer(
+        adb: adbClient,
+        deviceId: deviceId,
+      );
 
-    addLog('Starting scrcpy server...');
-    await server.start();
+      addLog('Starting scrcpy server...');
+      await server.start();
 
-    if (_disposed) {
-      await server.stop();
-      return;
+      if (_disposed) {
+        await server.stop();
+        return;
+      }
+
+      _server = server;
+      addLog('Web Player URL: ${server.playerUrl}');
+    } catch (e, s) {
+      addLog('CRITICAL ERROR starting server: $e');
+      debugPrintStack(stackTrace: s);
+      _isRunning = false;
     }
-
-    _server = server;
-    addLog('Web Player URL: ${server.playerUrl}');
     _notifyNow();
   }
 
