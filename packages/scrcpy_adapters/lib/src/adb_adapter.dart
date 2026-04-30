@@ -10,7 +10,7 @@ class AdbClientAdapter implements ScrcpyAdb {
 
   /// Creates an adapter with a default [AdbClient] using [adbPath].
   AdbClientAdapter.withPath({String adbPath = 'adb'})
-    : _client = AdbClient(adbPath: adbPath);
+      : _client = AdbClient(adbPath: adbPath);
 
   final AdbClient _client;
 
@@ -18,7 +18,7 @@ class AdbClientAdapter implements ScrcpyAdb {
   String get adbPath => _client.adbPath;
 
   @override
-  Future<List<String>> getDevices() async => _client.listDevices();
+  Future<List<String>> getDevices() async => _client.getDevices();
 
   @override
   Future<ProcessResult> shell(

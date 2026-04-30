@@ -4,5 +4,5 @@ import 'package:scrcpy_app/scrcpy_app.dart';
 
 void main() {
   initAppLogger();
-  runApp(ScrcpyApp());
+  runApp(const ScrcpyApp());
 }

@@ -5,13 +5,13 @@ import 'package:scrcpy_view/scrcpy_view.dart';
 /// Scrcpy operations exposed for MCP tool integration.
 class ScrcpyMcpServer {
   ScrcpyMcpServer({String? adbPath})
-    : _adb = AdbClient(adbPath: adbPath ?? 'adb');
+      : _adb = AdbClient(adbPath: adbPath ?? 'adb');
 
   final AdbClient _adb;
   ScrcpyServer? _server;
 
   /// List connected Android devices.
-  Future<List<String>> listDevices() async => _adb.listDevices();
+  Future<List<String>> listDevices() async => _adb.getDevices();
 
   /// Start screen mirroring for a [deviceId].
   Future<ScrcpyServer> startMirroring(String deviceId) async {

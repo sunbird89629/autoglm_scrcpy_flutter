@@ -44,9 +44,7 @@ class ScrcpyViewController extends ChangeNotifier {
     (msg) => _server?.sendControlMessage(msg),
   );
 
-  Future<List<String>> getDevices() async {
-    return ['aaaaaaaaaaaa', 'bbbbbbbbbb', 'cccccccccc'];
-  }
+  Future<List<String>> getDevices() => scrcpyAdb.getDevices();
 
   // ── Readable state ────────────────────────────────────────────────────────
 

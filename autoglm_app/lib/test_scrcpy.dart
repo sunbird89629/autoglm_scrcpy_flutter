@@ -106,7 +106,7 @@ class _ScrcpyTestScreenState extends State<ScrcpyTestScreen> {
     const adbClient = AdbClient();
 
     _addLog('Searching for devices...');
-    final devices = await adbClient.devices();
+    final devices = await adbClient.getDevices();
     if (devices.isEmpty) {
       _addLog('Error: No devices found!');
       setState(() => _isRunning = false);

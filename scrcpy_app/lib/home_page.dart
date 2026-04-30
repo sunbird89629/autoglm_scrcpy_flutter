@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:scrcpy_app/app_controller.dart';
+import 'package:scrcpy_app/device_list_widget.dart';
 import 'package:scrcpy_view/scrcpy_view.dart';
 
 class HomePage extends StatelessWidget {
@@ -7,9 +8,7 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _buildBody(),
-    );
+    return Scaffold(body: _buildBody());
   }
 
   Widget _buildBody() {
@@ -31,17 +30,10 @@ class HomePage extends StatelessWidget {
                 return Text("No device found");
               } else {
                 final devices = snapshot.data!;
-                return ListView.builder(
-                  itemCount: devices.length,
-                  itemBuilder: (context, index) {
-                    final deviceId = devices[index];
-                    return ListTile(
-                      title: Text(deviceId),
-                      onTap: () {
-                        // appController.connectDevice(deviceId);
-                        appController.connectDevice("11081FDD4004DY");
-                      },
-                    );
+                return DeviceListWidget(
+                  devices: devices,
+                  onItemTap: (index) {
+                    appController.connectDevice(devices[index]);
                   },
                 );
               }

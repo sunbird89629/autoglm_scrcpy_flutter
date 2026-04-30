@@ -53,7 +53,7 @@ List of devices attached
 emulator-5554\toffline
 ''';
       const client = AdbClient(runner: FakeRunner(stdout));
-      final devices = await client.devices();
+      final devices = await client.getDevices();
       expect(devices, ['192.168.1.1:5555', 'emulator-5554']);
     });
   });

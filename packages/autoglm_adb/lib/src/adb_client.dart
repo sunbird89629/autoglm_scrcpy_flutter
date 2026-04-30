@@ -157,8 +157,7 @@ class AdbClient {
     throw AdbException('Connect failed: $output');
   }
 
-  /// Lists connected devices.
-  Future<List<String>> devices() async {
+  Future<List<String>> getDevices() async {
     final result = await runner.runRaw(adbPath, ['devices']);
     final lines = result.stdout.toString().split('\n');
     final devices = <String>[];
@@ -171,9 +170,5 @@ class AdbClient {
       }
     }
     return devices;
-  }
-
-  Future<List<String>> listDevices() async {
-    return devices();
   }
 }

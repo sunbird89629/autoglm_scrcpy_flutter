@@ -24,5 +24,5 @@ final adbDevicesProvider = FutureProvider.autoDispose<List<String>>((
   ref,
 ) async {
   final client = await ref.watch(adbClientProvider.future);
-  return client.devices();
+  return client.getDevices();
 });
