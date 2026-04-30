@@ -200,7 +200,10 @@ class ScrcpyServer {
     const version = '3.3.4';
     const remotePath = '/data/local/tmp/scrcpy-server-v$version.jar';
 
-    await adb.shell(['pkill', '-f', 'scrcpy-server-v'], deviceId: deviceId);
+    // pkill exits non-zero when no process matched — ignore it
+    try {
+      await adb.shell(['pkill', '-f', 'scrcpy-server-v'], deviceId: deviceId);
+    } catch (_) {}
     await Future<void>.delayed(const Duration(milliseconds: 300));
 
     final args = [

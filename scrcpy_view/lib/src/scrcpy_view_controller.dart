@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
+import 'package:scrcpy_adapters/scrcpy_adapters.dart';
 import 'package:scrcpy_view/src/backends/scrcpy_video_backend.dart';
 import 'package:scrcpy_view/src/control_message.dart';
-import 'package:scrcpy_view/src/scrcpy_adb.dart';
 import 'package:scrcpy_view/src/scrcpy_logger.dart';
 import 'package:scrcpy_view/src/scrcpy_server.dart';
 
@@ -27,13 +27,26 @@ import 'package:scrcpy_view/src/scrcpy_server.dart';
 /// ```
 class ScrcpyViewController extends ChangeNotifier {
   ScrcpyServer? _server;
+  bool _running = false;
   bool _pending = false;
   VoidCallback? _onStopped;
+
+  final scrcpyAdb = AdbClientAdapter.withPath();
+
+  bool get running => _running;
+  set running(bool value) {
+    _running = value;
+    notifyListeners();
+  }
 
   /// Touch event forwarder passed to the video backend.
   late final ScrcpyTouchController touchController = ScrcpyTouchController(
     (msg) => _server?.sendControlMessage(msg),
   );
+
+  Future<List<String>> getDevices() async {
+    return ['aaaaaaaaaaaa', 'bbbbbbbbbb', 'cccccccccc'];
+  }
 
   // ── Readable state ────────────────────────────────────────────────────────
 
@@ -46,13 +59,10 @@ class ScrcpyViewController extends ChangeNotifier {
   /// The active `ScrcpyServer`, or `null` if no session is active.
   ScrcpyServer? get server => _server;
 
-  // ── Lifecycle ─────────────────────────────────────────────────────────────
-
   /// Starts a mirroring session for [deviceId].
   ///
   /// No-ops if a session is already starting or active.
   Future<void> start(
-    ScrcpyAdb adb,
     String deviceId, {
     ScrcpyLogger logger = const NoOpScrcpyLogger(),
     VoidCallback? onStarted,
@@ -64,19 +74,21 @@ class ScrcpyViewController extends ChangeNotifier {
     _onStopped = onStopped;
     notifyListeners();
 
-    final server = ScrcpyServer(adb: adb, deviceId: deviceId, logger: logger);
+    final server = ScrcpyServer(
+      adb: scrcpyAdb,
+      deviceId: deviceId,
+      logger: logger,
+    );
     try {
       await server.start();
       _server = server;
       _pending = false;
       notifyListeners();
       onStarted?.call();
-    } catch (e) {
-      logger.error('[ScrcpyViewController] Failed to start: $e', e);
+    } finally {
       _pending = false;
       _onStopped = null;
       notifyListeners();
-      onError?.call(e.toString());
     }
   }
 

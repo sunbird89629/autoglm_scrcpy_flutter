@@ -62,7 +62,6 @@ class AppController extends ChangeNotifier {
     if (scrcpyController.isActive) return;
     addLog('Starting scrcpy viewer...');
     scrcpyController.start(
-      adbClient,
       deviceId,
       onStarted: () => addLog('Scrcpy started'),
       onStopped: () => addLog('Scrcpy stopped'),

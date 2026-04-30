@@ -10,25 +10,16 @@ environment:
 resolution: workspace
 
 dependencies:
-  autoglm_adb:
-    path: ../packages/autoglm_adb
+  path: ^1.9.0
   autoglm_logger:
     path: ../packages/autoglm_logger
-  scrcpy_adapters:
-    path: ../packages/scrcpy_adapters
-  autoglm_ui_kit:
-    path: ../packages/autoglm_ui_kit
-  flutter:
-    sdk: flutter
-  flutter_riverpod: ^2.5.1
-  path: ^1.9.0
   scrcpy_view:
     path: ../scrcpy_view
+  scrcpy_adapters:
+    path: ../packages/scrcpy_adapters
   flutter_inappwebview: ^6.1.5
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
 flutter:
   uses-material-design: true
