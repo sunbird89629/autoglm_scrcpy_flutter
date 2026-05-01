@@ -23,7 +23,7 @@ class AdbProcessRunner {
       if (result.exitCode != 0) {
         final err = result.stderr.toString().trim();
         final out = result.stdout.toString().trim();
-        appLogger.d(
+        AppLogger.maybeLog(
           'Command failed ($executable ${arguments.join(' ')}):\n$err\n$out',
         );
         throw AdbException(

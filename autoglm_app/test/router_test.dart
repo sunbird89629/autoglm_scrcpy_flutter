@@ -46,7 +46,7 @@ void main() {
     final paths = ['/devices', '/chat', '/workflows', '/history', '/settings'];
     for (final p in paths) {
       router.go(p);
-      await tester.pumpAndSettle();
+      await tester.pump();
       expect(router.routerDelegate.currentConfiguration.uri.path, p);
     }
   });

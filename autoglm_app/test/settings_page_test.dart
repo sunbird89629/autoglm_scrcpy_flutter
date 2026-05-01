@@ -45,7 +45,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final saved = await repo.load();
-    expect(saved.themeMode, ThemeMode.dark);
+    expect(saved.themeMode, 'dark');
   });
 
   testWidgets('changing locale dropdown persists to repo', (tester) async {
@@ -54,7 +54,7 @@ void main() {
 
     await tester.tap(find.byKey(SettingsPage.localeDropdownKey));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('en-US').last);
+    await tester.tap(find.text('English').last);
     await tester.pumpAndSettle();
 
     final saved = await repo.load();

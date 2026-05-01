@@ -116,8 +116,7 @@ docs/
   plans/               # Implementation plans by date/sub-project
   specs/               # Design/spec documents
 
-melos.yaml             # Melos package list and workspace scripts
-pubspec.yaml           # Dart workspace root and Melos dev dependency
+pubspec.yaml           # Dart workspace root, package list, and Melos scripts
 analysis_options.yaml  # Root analyzer configuration
 ```
 
@@ -195,6 +194,29 @@ melos run test              # run all tests
 melos run gen               # build_runner (freezed / json_serializable)
 melos run gen:i18n          # regenerate slang strings.g.dart
 ```
+
+## Testing
+
+The default test command is CI-friendly and only runs packages that have a
+`test/` directory:
+
+```bash
+melos run test
+```
+
+Current test coverage:
+
+| Package | Test focus |
+|---|---|
+| `autoglm_app` | Router, shell layout, settings UI, locale/theme providers |
+| `packages/autoglm_adb` | ADB command parsing, process runner, binary manager |
+| `packages/autoglm_core` | Settings, history storage, trace records, logger behavior |
+| `packages/autoglm_ui_kit` | Light/dark theme smoke tests |
+| `scrcpy_view` | Control message encoding, server wiring, stream parser |
+
+Packages without a `test/` directory are skipped by the default command.
+ADB tests that require a real Android device should stay skipped by default or
+move to a separately triggered integration test workflow.
 
 ### Scoping to specific packages
 
