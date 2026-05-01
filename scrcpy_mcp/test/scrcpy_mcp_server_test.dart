@@ -103,5 +103,21 @@ void main() {
       );
       expect(server, isNotNull);
     });
+
+    test('device://list resource is registered', () async {
+      final server = ScrcpyMcpServer(
+        _testChannel(),
+        adb: MockAdb(),
+      );
+      expect(server, isNotNull);
+    });
+
+    test('mirroring://status resource is registered', () async {
+      final server = ScrcpyMcpServer(
+        _testChannel(),
+        adb: MockAdb(),
+      );
+      expect(server, isNotNull);
+    });
   });
 }

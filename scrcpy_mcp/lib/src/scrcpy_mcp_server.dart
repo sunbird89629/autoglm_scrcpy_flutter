@@ -5,7 +5,8 @@ import 'package:dart_mcp/server.dart';
 import 'package:scrcpy_view/scrcpy_view.dart';
 
 /// MCP server exposing scrcpy operations.
-final class ScrcpyMcpServer extends MCPServer with ToolsSupport {
+final class ScrcpyMcpServer extends MCPServer
+    with ToolsSupport, ResourcesSupport {
   /// Creates a scrcpy MCP server.
   ScrcpyMcpServer(
     super.channel, {
@@ -28,6 +29,7 @@ final class ScrcpyMcpServer extends MCPServer with ToolsSupport {
   @override
   FutureOr<InitializeResult> initialize(InitializeRequest request) {
     _registerTools();
+    _registerResources();
     return super.initialize(request);
   }
 
@@ -141,6 +143,28 @@ final class ScrcpyMcpServer extends MCPServer with ToolsSupport {
         ),
       ),
       _injectScroll,
+    );
+  }
+
+  void _registerResources() {
+    addResource(
+      Resource(
+        uri: 'device://list',
+        name: 'Connected Devices',
+        description: 'List of currently connected Android devices.',
+        mimeType: 'application/json',
+      ),
+      _readDeviceList,
+    );
+
+    addResource(
+      Resource(
+        uri: 'mirroring://status',
+        name: 'Mirroring Status',
+        description: 'Current mirroring session status.',
+        mimeType: 'application/json',
+      ),
+      _readMirroringStatus,
     );
   }
 
@@ -304,6 +328,43 @@ final class ScrcpyMcpServer extends MCPServer with ToolsSupport {
       content: [
         Content.text(
           text: 'Scroll event sent: ($x, $y) h=$hScroll v=$vScroll',
+        ),
+      ],
+    );
+  }
+
+  Future<ReadResourceResult> _readDeviceList(
+    ReadResourceRequest request,
+  ) async {
+    final devices = await _adb.getDevices();
+    return ReadResourceResult(
+      contents: [
+        TextResourceContents(
+          uri: 'device://list',
+          text: jsonEncode(devices),
+          mimeType: 'application/json',
+        ),
+      ],
+    );
+  }
+
+  Future<ReadResourceResult> _readMirroringStatus(
+    ReadResourceRequest request,
+  ) async {
+    final status = <String, dynamic>{
+      'active': _activeServer != null,
+      if (_activeServer != null) ...{
+        'device_id': _activeServer!.deviceId,
+        'proxy_url': _activeServer!.proxyUrl,
+        'player_url': _activeServer!.playerUrl,
+      },
+    };
+    return ReadResourceResult(
+      contents: [
+        TextResourceContents(
+          uri: 'mirroring://status',
+          text: jsonEncode(status),
+          mimeType: 'application/json',
         ),
       ],
     );
