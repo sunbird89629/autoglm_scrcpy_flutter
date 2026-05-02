@@ -1,14 +1,12 @@
 #!/usr/bin/env dart
 // Test client for scrcpy_mcp — exercises all MCP capabilities.
 
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dart_mcp/client.dart';
-import 'package:dart_mcp/stdio.dart';
+import 'package:mcp_dart/mcp_dart.dart';
 
-void main(List<String> args) async {
+Future<void> main(List<String> args) async {
   final adbArgs = <String>[];
   for (final arg in args) {
     if (!arg.startsWith('--')) adbArgs.add(arg);
@@ -44,58 +42,54 @@ void main(List<String> args) async {
   // Forward server stderr to our stderr for diagnostics.
   process.stderr.transform(utf8.decoder).listen(stderr.write);
 
-  final client = MCPClient(
-    Implementation(name: 'scrcpy-mcp-test', version: '0.1.0'),
+  final client = McpClient(
+    const Implementation(name: 'scrcpy-mcp-test', version: '0.1.0'),
   );
 
-  final server = client.connectServer(
-    stdioChannel(input: process.stdout, output: process.stdin),
+  final transport = StdioClientTransport(
+    process.stdout,
+    process.stdin,
   );
-  unawaited(server.done.then((_) => process.kill()));
 
   try {
-    // --- Initialize ---
-    final initResult = await server.initialize(
-      InitializeRequest(
-        protocolVersion: ProtocolVersion.latestSupported,
-        capabilities: client.capabilities,
-        clientInfo: client.implementation,
-      ),
-    );
-    server.notifyInitialized();
-
-    stdout
-      ..writeln('Server: ${initResult.serverInfo.name} '
-          'v${initResult.serverInfo.version}')
-      ..writeln('Protocol: ${initResult.protocolVersion}')
-      ..writeln('Instructions: ${initResult.instructions}\n');
+    await client.connect(transport);
 
     // --- Tools ---
-    await _listTools(server);
-    await _callTool(server, 'list_devices');
+    await _listTools(client);
+    await _callTool(client, 'list_devices');
 
     // Try mirroring if devices are available.
-    final devicesResult = await server.callTool(
-      CallToolRequest(name: 'list_devices'),
+    final devicesResult = await client.callTool(
+      const CallToolRequest(name: 'list_devices'),
     );
-    final devices = _textOf(devicesResult) ?? '[]';
-    if (devices != '[]') {
-      final deviceList = jsonDecode(devices) as List;
+    final devicesText = _textOf(devicesResult) ?? '[]';
+    if (devicesText != '[]') {
+      final deviceList = jsonDecode(devicesText) as List;
       if (deviceList.isNotEmpty) {
         final deviceId = deviceList.first.toString();
-        stdout.writeln('\nDevice found: $deviceId — testing mirroring...\n');
+        stdout.writeln(
+          '\nDevice found: $deviceId — testing mirroring...\n',
+        );
 
-        await _callTool(server, 'start_mirroring', {'device_id': deviceId});
-        await _callTool(server, 'inject_key', {'keycode': 3}); // Home
-        await _callTool(server, 'inject_key', {'keycode': 4}); // Back
-        await _callTool(server, 'inject_touch', {
+        await _callTool(
+          client,
+          'start_mirroring',
+          {'device_id': deviceId},
+        );
+        await _callTool(client, 'inject_key', {'keycode': 3}); // Home
+        await _callTool(client, 'inject_key', {'keycode': 4}); // Back
+        await _callTool(client, 'inject_touch', {
           'x': 540,
           'y': 960,
           'width': 1080,
           'height': 1920,
         });
-        await _callTool(server, 'inject_text', {'text': 'hello from MCP'});
-        await _callTool(server, 'inject_scroll', {
+        await _callTool(
+          client,
+          'inject_text',
+          {'text': 'hello from MCP'},
+        );
+        await _callTool(client, 'inject_scroll', {
           'x': 540,
           'y': 960,
           'width': 1080,
@@ -103,35 +97,41 @@ void main(List<String> args) async {
           'hScroll': 0,
           'vScroll': -3,
         });
-        await _callTool(server, 'stop_mirroring');
+        await _callTool(client, 'stop_mirroring');
       }
     } else {
-      stdout.writeln('No devices connected — skipping mirroring tests.\n');
+      stdout.writeln(
+        'No devices connected — skipping mirroring tests.\n',
+      );
     }
 
     // --- Resources ---
-    await _listResources(server);
-    await _readResource(server, 'device://list');
-    await _readResource(server, 'mirroring://status');
+    await _listResources(client);
+    await _readResource(client, 'device://list');
+    await _readResource(client, 'mirroring://status');
 
     // --- Prompts ---
-    await _listPrompts(server);
-    await _getPrompt(server, 'control_device');
-    await _getPrompt(server, 'troubleshoot', {'issue': 'no devices found'});
+    await _listPrompts(client);
+    await _getPrompt(client, 'control_device');
+    await _getPrompt(
+      client,
+      'troubleshoot',
+      {'issue': 'no devices found'},
+    );
 
     stdout.writeln('\n=== All tests passed ===');
   } on Exception catch (e, st) {
     stderr.writeln('Error: $e\n$st');
     exitCode = 1;
   } finally {
-    await server.shutdown();
-    await client.shutdown();
+    await client.close();
+    process.kill();
   }
 }
 
-Future<void> _listTools(ServerConnection server) async {
+Future<void> _listTools(McpClient client) async {
   stdout.writeln('--- Tools ---');
-  final result = await server.listTools();
+  final result = await client.listTools();
   for (final tool in result.tools) {
     stdout.writeln('  ${tool.name}: ${tool.description}');
   }
@@ -139,12 +139,12 @@ Future<void> _listTools(ServerConnection server) async {
 }
 
 Future<void> _callTool(
-  ServerConnection server,
+  McpClient client,
   String name, [
   Map<String, Object?>? arguments,
 ]) async {
   stdout.writeln('>> call $name${arguments != null ? " $arguments" : ""}');
-  final result = await server.callTool(
+  final result = await client.callTool(
     CallToolRequest(name: name, arguments: arguments),
   );
   if (result.isError ?? false) {
@@ -154,28 +154,30 @@ Future<void> _callTool(
   }
 }
 
-Future<void> _listResources(ServerConnection server) async {
+Future<void> _listResources(McpClient client) async {
   stdout.writeln('\n--- Resources ---');
-  final result = await server.listResources();
+  final result = await client.listResources();
   for (final r in result.resources) {
     stdout.writeln('  ${r.uri}: ${r.description}');
   }
   stdout.writeln();
 }
 
-Future<void> _readResource(ServerConnection server, String uri) async {
+Future<void> _readResource(McpClient client, String uri) async {
   stdout.writeln('>> read $uri');
-  final result = await server.readResource(ReadResourceRequest(uri: uri));
+  final result = await client.readResource(
+    ReadResourceRequest(uri: uri),
+  );
   for (final part in result.contents) {
-    if (part.isText) {
-      stdout.writeln('   ${(part as TextResourceContents).text}');
+    if (part is TextResourceContents) {
+      stdout.writeln('   ${part.text}');
     }
   }
 }
 
-Future<void> _listPrompts(ServerConnection server) async {
+Future<void> _listPrompts(McpClient client) async {
   stdout.writeln('\n--- Prompts ---');
-  final result = await server.listPrompts();
+  final result = await client.listPrompts();
   for (final p in result.prompts) {
     stdout.writeln('  ${p.name}: ${p.description}');
   }
@@ -183,29 +185,29 @@ Future<void> _listPrompts(ServerConnection server) async {
 }
 
 Future<void> _getPrompt(
-  ServerConnection server,
+  McpClient client,
   String name, [
   Map<String, String>? arguments,
 ]) async {
-  stdout.writeln('>> prompt $name${arguments != null ? " $arguments" : ""}');
-  final result = await server.getPrompt(
+  stdout.writeln(
+    '>> prompt $name${arguments != null ? " $arguments" : ""}',
+  );
+  final result = await client.getPrompt(
     GetPromptRequest(name: name, arguments: arguments),
   );
   for (final msg in result.messages) {
-    stdout.writeln('   [${msg.role}] ${_contentText(msg.content)}');
+    final content = msg.content;
+    final text =
+        content is TextContent ? content.text : '[${content.runtimeType}]';
+    stdout.writeln('   [${msg.role}] $text');
   }
 }
 
 String? _textOf(CallToolResult result) {
   for (final c in result.content) {
-    if (c.isText) return (c as TextContent).text;
+    if (c is TextContent) return c.text;
   }
   return null;
-}
-
-String _contentText(Content content) {
-  if (content.isText) return (content as TextContent).text;
-  return '[${content.type}]';
 }
 
 /// Finds the fvm executable, checking PATH first, then common locations.

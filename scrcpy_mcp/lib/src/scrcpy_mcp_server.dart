@@ -1,369 +1,293 @@
-import 'dart:async';
 import 'dart:convert';
 
-import 'package:dart_mcp/server.dart';
+import 'package:mcp_dart/mcp_dart.dart';
 import 'package:scrcpy_view/scrcpy_view.dart';
 
-/// MCP server exposing scrcpy operations.
-final class ScrcpyMcpServer extends MCPServer
-    with ToolsSupport, ResourcesSupport, PromptsSupport {
+/// MCP server exposing scrcpy operations via the Model Context Protocol.
+class ScrcpyMcpServer {
   /// Creates a scrcpy MCP server.
-  ScrcpyMcpServer(
-    super.channel, {
+  ///
+  /// [viewController] is shared with the UI so both the widget and the MCP
+  /// server operate on the same mirroring session.
+  /// [adb] provides device enumeration and screenshot capture.
+  ScrcpyMcpServer({
+    required ScrcpyViewController viewController,
     required ScrcpyAdb adb,
-    super.protocolLogSink,
-  })  : _adb = adb,
-        super.fromStreamChannel(
-          implementation: Implementation(
-            name: 'scrcpy-mcp',
-            version: '0.2.0',
-          ),
-          instructions:
-              'Use this server to control Android devices via scrcpy. '
-              'List devices, start/stop screen mirroring, and inject input events.',
-        );
+  })  : _viewController = viewController,
+        _adb = adb {
+    _mcpServer = McpServer(
+      const Implementation(name: 'scrcpy-mcp', version: '0.2.0'),
+      options: const McpServerOptions(
+        capabilities: ServerCapabilities(
+          tools: ServerCapabilitiesTools(),
+          resources: ServerCapabilitiesResources(),
+          prompts: ServerCapabilitiesPrompts(),
+        ),
+      ),
+    );
+    _registerAll();
+  }
 
+  final ScrcpyViewController _viewController;
   final ScrcpyAdb _adb;
-  ScrcpyServer? _activeServer;
+  late final McpServer _mcpServer;
+  String? _connectedDeviceId;
 
-  @override
-  FutureOr<InitializeResult> initialize(InitializeRequest request) {
+  /// The underlying [McpServer] used to connect to a transport.
+  McpServer get mcpServer => _mcpServer;
+
+  void _registerAll() {
     _registerTools();
     _registerResources();
     _registerPrompts();
-    return super.initialize(request);
   }
 
   void _registerTools() {
-    registerTool(
-      Tool(
-        name: 'list_devices',
+    _mcpServer
+      ..registerTool(
+        'list_devices',
         description: 'List connected Android devices.',
-        inputSchema: ObjectSchema(),
-      ),
-      _listDevices,
-    );
-
-    registerTool(
-      Tool(
-        name: 'start_mirroring',
+        inputSchema: JsonSchema.object(properties: {}),
+        callback: _listDevices,
+      )
+      ..registerTool(
+        'start_mirroring',
         description: 'Start screen mirroring for a device.',
-        inputSchema: ObjectSchema(
+        inputSchema: JsonSchema.object(
           properties: {
-            'device_id': Schema.string(
+            'device_id': JsonSchema.string(
               description: 'The Android device serial',
             ),
           },
           required: ['device_id'],
         ),
-      ),
-      _startMirroring,
-    );
-
-    registerTool(
-      Tool(
-        name: 'stop_mirroring',
+        callback: _startMirroring,
+      )
+      ..registerTool(
+        'stop_mirroring',
         description: 'Stop the active mirroring session.',
-        inputSchema: ObjectSchema(),
-      ),
-      _stopMirroring,
-    );
-
-    registerTool(
-      Tool(
-        name: 'inject_key',
+        inputSchema: JsonSchema.object(properties: {}),
+        callback: _stopMirroring,
+      )
+      ..registerTool(
+        'inject_key',
         description: 'Send a key event to the device.',
-        inputSchema: ObjectSchema(
+        inputSchema: JsonSchema.object(
           properties: {
-            'keycode': Schema.int(
+            'keycode': JsonSchema.integer(
               description: 'Android KeyEvent keycode',
             ),
-            'action': Schema.int(
+            'action': JsonSchema.integer(
               description: 'Key action: 0=down, 1=up (default: 0)',
             ),
           },
           required: ['keycode'],
         ),
-      ),
-      _injectKey,
-    );
-
-    registerTool(
-      Tool(
-        name: 'inject_touch',
+        callback: _injectKey,
+      )
+      ..registerTool(
+        'inject_touch',
         description: 'Send a touch event to the device.',
-        inputSchema: ObjectSchema(
+        inputSchema: JsonSchema.object(
           properties: {
-            'x': Schema.int(description: 'X coordinate'),
-            'y': Schema.int(description: 'Y coordinate'),
-            'width': Schema.int(description: 'Screen width'),
-            'height': Schema.int(description: 'Screen height'),
-            'action': Schema.int(
-              description:
-                  'Touch action: 0=down, 1=up, 2=move (default: 0)',
+            'x': JsonSchema.integer(description: 'X coordinate'),
+            'y': JsonSchema.integer(description: 'Y coordinate'),
+            'width': JsonSchema.integer(description: 'Screen width'),
+            'height': JsonSchema.integer(description: 'Screen height'),
+            'action': JsonSchema.integer(
+              description: 'Touch action: 0=down, 1=up, 2=move (default: 0)',
             ),
           },
           required: ['x', 'y', 'width', 'height'],
         ),
-      ),
-      _injectTouch,
-    );
-
-    registerTool(
-      Tool(
-        name: 'inject_text',
+        callback: _injectTouch,
+      )
+      ..registerTool(
+        'inject_text',
         description: 'Input text on the device.',
-        inputSchema: ObjectSchema(
+        inputSchema: JsonSchema.object(
           properties: {
-            'text': Schema.string(description: 'Text to input'),
+            'text': JsonSchema.string(description: 'Text to input'),
           },
           required: ['text'],
         ),
-      ),
-      _injectText,
-    );
-
-    registerTool(
-      Tool(
-        name: 'inject_scroll',
+        callback: _injectText,
+      )
+      ..registerTool(
+        'inject_scroll',
         description: 'Send a scroll event to the device.',
-        inputSchema: ObjectSchema(
+        inputSchema: JsonSchema.object(
           properties: {
-            'x': Schema.int(description: 'X coordinate'),
-            'y': Schema.int(description: 'Y coordinate'),
-            'width': Schema.int(description: 'Screen width'),
-            'height': Schema.int(description: 'Screen height'),
-            'hScroll': Schema.int(
+            'x': JsonSchema.integer(description: 'X coordinate'),
+            'y': JsonSchema.integer(description: 'Y coordinate'),
+            'width': JsonSchema.integer(description: 'Screen width'),
+            'height': JsonSchema.integer(description: 'Screen height'),
+            'hScroll': JsonSchema.integer(
               description: 'Horizontal scroll amount',
             ),
-            'vScroll': Schema.int(
+            'vScroll': JsonSchema.integer(
               description: 'Vertical scroll amount',
             ),
           },
           required: ['x', 'y', 'width', 'height', 'hScroll', 'vScroll'],
         ),
-      ),
-      _injectScroll,
-    );
-  }
-
-  void _registerPrompts() {
-    addPrompt(
-      Prompt(
-        name: 'control_device',
-        description:
-            'Assist with Android device control via scrcpy. '
-            'Helps with navigation, input, and screen mirroring.',
-        arguments: [
-          PromptArgument(
-            name: 'device_id',
-            description: 'The device to control (optional if only one device)',
-          ),
-        ],
-      ),
-      _getControlDevicePrompt,
-    );
-
-    addPrompt(
-      Prompt(
-        name: 'troubleshoot',
-        description: 'Help diagnose and fix device connection issues.',
-        arguments: [
-          PromptArgument(
-            name: 'issue',
-            description: 'Description of the issue encountered',
-          ),
-        ],
-      ),
-      _getTroubleshootPrompt,
-    );
+        callback: _injectScroll,
+      )
+      ..registerTool(
+        'take_screenshot',
+        description: 'Capture the current screen of the device as a PNG image.',
+        inputSchema: JsonSchema.object(
+          properties: {
+            'device_id': JsonSchema.string(
+              description:
+                  'Device serial (optional, uses connected device if omitted)',
+            ),
+          },
+        ),
+        callback: _takeScreenshot,
+      );
   }
 
   void _registerResources() {
-    addResource(
-      Resource(
-        uri: 'device://list',
-        name: 'Connected Devices',
-        description: 'List of currently connected Android devices.',
-        mimeType: 'application/json',
-      ),
-      _readDeviceList,
-    );
-
-    addResource(
-      Resource(
-        uri: 'mirroring://status',
-        name: 'Mirroring Status',
-        description: 'Current mirroring session status.',
-        mimeType: 'application/json',
-      ),
-      _readMirroringStatus,
-    );
-  }
-
-  Future<GetPromptResult> _getControlDevicePrompt(
-    GetPromptRequest request,
-  ) async {
-    final deviceId = request.arguments?['device_id'] as String?;
-
-    final devices = await _adb.getDevices();
-    final deviceInfo = deviceId != null
-        ? 'Target device: $deviceId'
-        : 'Available devices: ${devices.join(", ")}';
-
-    return GetPromptResult(
-      description: 'Device control assistant',
-      messages: [
-        PromptMessage(
-          role: Role.user,
-          content: Content.text(
-            text: 'You are an Android device control assistant.\n\n'
-                '$deviceInfo\n\n'
-                'You can use the following tools:\n'
-                '- list_devices: See connected devices\n'
-                '- start_mirroring: Start screen mirroring\n'
-                '- stop_mirroring: Stop mirroring\n'
-                '- inject_key: Send key events '
-                    '(Home=3, Back=4, AppSwitch=187)\n'
-                '- inject_touch: Send touch events\n'
-                '- inject_text: Type text\n'
-                '- inject_scroll: Scroll the screen\n\n'
-                'Help the user control their Android device.',
-          ),
+    _mcpServer
+      ..registerResource(
+        'Connected Devices',
+        'device://list',
+        (
+          description: 'List of currently connected Android devices.',
+          mimeType: 'application/json',
         ),
-      ],
-    );
-  }
-
-  Future<GetPromptResult> _getTroubleshootPrompt(
-    GetPromptRequest request,
-  ) async {
-    final issue = request.arguments?['issue'] as String?;
-
-    final devices = await _adb.getDevices();
-
-    return GetPromptResult(
-      description: 'Device troubleshooting assistant',
-      messages: [
-        PromptMessage(
-          role: Role.user,
-          content: Content.text(
-            text: 'You are an Android device '
-                'troubleshooting assistant.\n\n'
-                'Connected devices: '
-                '${devices.isEmpty ? "none" : devices.join(", ")}\n'
-                '${issue != null ? "Reported issue: $issue\n" : ""}\n'
-                'Common issues and solutions:\n'
-                '1. No devices found: Check USB connection, '
-                'enable USB debugging\n'
-                '2. Connection refused: Restart adb server '
-                '(adb kill-server)\n'
-                '3. Mirroring fails: Check scrcpy server '
-                'version compatibility\n'
-                '4. Black screen: Device may be locked, '
-                'try pressing power key\n\n'
-                'Help the user diagnose and resolve their device issue.',
-          ),
+        _readDeviceList,
+      )
+      ..registerResource(
+        'Mirroring Status',
+        'mirroring://status',
+        (
+          description: 'Current mirroring session status.',
+          mimeType: 'application/json',
         ),
-      ],
-    );
-  }
-
-  Future<CallToolResult> _listDevices(CallToolRequest request) async {
-    final devices = await _adb.getDevices();
-    return CallToolResult(
-      content: [Content.text(text: jsonEncode(devices))],
-    );
-  }
-
-  Future<CallToolResult> _startMirroring(CallToolRequest request) async {
-    final deviceId =
-        (request.arguments!['device_id'] as String?)!;
-
-    // Stop existing session if any
-    await _activeServer?.stop();
-
-    _activeServer = ScrcpyServer(
-      adb: _adb,
-      deviceId: deviceId,
-    );
-
-    try {
-      await _activeServer!.start();
-      final status = {
-        'status': 'mirroring',
-        'device_id': deviceId,
-        'proxy_url': _activeServer!.proxyUrl,
-        'player_url': _activeServer!.playerUrl,
-      };
-      return CallToolResult(
-        content: [Content.text(text: jsonEncode(status))],
+        _readMirroringStatus,
       );
+  }
+
+  void _registerPrompts() {
+    _mcpServer
+      ..registerPrompt(
+        'control_device',
+        description: 'Assist with Android device control via scrcpy.',
+        argsSchema: {
+          'device_id': const PromptArgumentDefinition(
+            type: String,
+            description: 'The device to control (optional if only one device)',
+          ),
+        },
+        callback: _getControlDevicePrompt,
+      )
+      ..registerPrompt(
+        'troubleshoot',
+        description: 'Help diagnose and fix device connection issues.',
+        argsSchema: {
+          'issue': const PromptArgumentDefinition(
+            type: String,
+            description: 'Description of the issue encountered',
+          ),
+        },
+        callback: _getTroubleshootPrompt,
+      );
+  }
+
+  // ── Tool implementations ──────────────────────────────────────────────────
+
+  Future<CallToolResult> _listDevices(
+    Map<String, dynamic> args,
+    RequestHandlerExtra extra,
+  ) async {
+    final devices = await _adb.getDevices();
+    return CallToolResult.fromContent(
+      [TextContent(text: jsonEncode(devices))],
+    );
+  }
+
+  Future<CallToolResult> _startMirroring(
+    Map<String, dynamic> args,
+    RequestHandlerExtra extra,
+  ) async {
+    final deviceId = args['device_id'] as String;
+    try {
+      await _viewController.start(deviceId);
+      _connectedDeviceId = deviceId;
+      return CallToolResult.fromContent([
+        TextContent(
+          text: jsonEncode({
+            'status': 'mirroring',
+            'device_id': deviceId,
+            'proxy_url': _viewController.server?.proxyUrl,
+            'player_url': _viewController.server?.playerUrl,
+          }),
+        ),
+      ]);
     } on Exception catch (e) {
       return CallToolResult(
+        content: [TextContent(text: 'Failed to start mirroring: $e')],
         isError: true,
-        content: [Content.text(text: 'Failed to start mirroring: $e')],
       );
     }
   }
 
-  Future<CallToolResult> _stopMirroring(CallToolRequest request) async {
-    if (_activeServer == null) {
-      return CallToolResult(
-        content: [Content.text(text: 'No active mirroring session.')],
+  Future<CallToolResult> _stopMirroring(
+    Map<String, dynamic> args,
+    RequestHandlerExtra extra,
+  ) async {
+    if (!_viewController.isConnected) {
+      return CallToolResult.fromContent(
+        [const TextContent(text: 'No active mirroring session.')],
       );
     }
-
-    await _activeServer!.stop();
-    _activeServer = null;
-
-    return CallToolResult(
-      content: [Content.text(text: 'Mirroring stopped.')],
+    await _viewController.stop();
+    _connectedDeviceId = null;
+    return CallToolResult.fromContent(
+      [const TextContent(text: 'Mirroring stopped.')],
     );
   }
 
-  Future<CallToolResult> _injectKey(CallToolRequest request) async {
-    if (_activeServer == null) {
-      return CallToolResult(
+  Future<CallToolResult> _injectKey(
+    Map<String, dynamic> args,
+    RequestHandlerExtra extra,
+  ) async {
+    if (!_viewController.isConnected) {
+      return const CallToolResult(
+        content: [TextContent(text: 'No active mirroring session.')],
         isError: true,
-        content: [Content.text(text: 'No active mirroring session.')],
       );
     }
-
-    final keycode =
-        (request.arguments!['keycode'] as int?)!;
-    final action =
-        request.arguments!['action'] as int? ?? ScrcpyAction.down;
-
-    _activeServer!.sendControlMessage(
+    final keycode = args['keycode'] as int;
+    final action = args['action'] as int? ?? ScrcpyAction.down;
+    _viewController.sendControlMessage(
       ScrcpyInjectKeyMessage(action: action, keycode: keycode),
     );
-
-    return CallToolResult(
-      content: [
-        Content.text(
-          text: 'Key event sent: keycode=$keycode, action=$action',
-        ),
-      ],
-    );
+    return CallToolResult.fromContent([
+      TextContent(
+        text: 'Key event sent: keycode=$keycode, action=$action',
+      ),
+    ]);
   }
 
-  Future<CallToolResult> _injectTouch(CallToolRequest request) async {
-    if (_activeServer == null) {
-      return CallToolResult(
+  Future<CallToolResult> _injectTouch(
+    Map<String, dynamic> args,
+    RequestHandlerExtra extra,
+  ) async {
+    if (!_viewController.isConnected) {
+      return const CallToolResult(
+        content: [TextContent(text: 'No active mirroring session.')],
         isError: true,
-        content: [Content.text(text: 'No active mirroring session.')],
       );
     }
-
-    final x = (request.arguments!['x'] as int?)!;
-    final y = (request.arguments!['y'] as int?)!;
-    final width = (request.arguments!['width'] as int?)!;
-    final height = (request.arguments!['height'] as int?)!;
-    final action =
-        request.arguments!['action'] as int? ?? ScrcpyAction.down;
-
-    _activeServer!.sendControlMessage(
+    final x = args['x'] as int;
+    final y = args['y'] as int;
+    final width = args['width'] as int;
+    final height = args['height'] as int;
+    final action = args['action'] as int? ?? ScrcpyAction.down;
+    _viewController.sendControlMessage(
       ScrcpyInjectTouchMessage(
         action: action,
         pointerId: 0,
@@ -373,49 +297,45 @@ final class ScrcpyMcpServer extends MCPServer
         height: height,
       ),
     );
+    return CallToolResult.fromContent([
+      TextContent(text: 'Touch event sent: ($x, $y) action=$action'),
+    ]);
+  }
 
-    return CallToolResult(
-      content: [
-        Content.text(
-          text: 'Touch event sent: ($x, $y) action=$action',
-        ),
-      ],
+  Future<CallToolResult> _injectText(
+    Map<String, dynamic> args,
+    RequestHandlerExtra extra,
+  ) async {
+    if (!_viewController.isConnected) {
+      return const CallToolResult(
+        content: [TextContent(text: 'No active mirroring session.')],
+        isError: true,
+      );
+    }
+    final text = args['text'] as String;
+    _viewController.injectText(text);
+    return CallToolResult.fromContent(
+      [TextContent(text: 'Text sent: "$text"')],
     );
   }
 
-  Future<CallToolResult> _injectText(CallToolRequest request) async {
-    if (_activeServer == null) {
-      return CallToolResult(
+  Future<CallToolResult> _injectScroll(
+    Map<String, dynamic> args,
+    RequestHandlerExtra extra,
+  ) async {
+    if (!_viewController.isConnected) {
+      return const CallToolResult(
+        content: [TextContent(text: 'No active mirroring session.')],
         isError: true,
-        content: [Content.text(text: 'No active mirroring session.')],
       );
     }
-
-    final text = (request.arguments!['text'] as String?)!;
-
-    _activeServer!.sendControlMessage(ScrcpyInjectTextMessage(text));
-
-    return CallToolResult(
-      content: [Content.text(text: 'Text sent: "$text"')],
-    );
-  }
-
-  Future<CallToolResult> _injectScroll(CallToolRequest request) async {
-    if (_activeServer == null) {
-      return CallToolResult(
-        isError: true,
-        content: [Content.text(text: 'No active mirroring session.')],
-      );
-    }
-
-    final x = (request.arguments!['x'] as int?)!;
-    final y = (request.arguments!['y'] as int?)!;
-    final width = (request.arguments!['width'] as int?)!;
-    final height = (request.arguments!['height'] as int?)!;
-    final hScroll = (request.arguments!['hScroll'] as int?)!;
-    final vScroll = (request.arguments!['vScroll'] as int?)!;
-
-    _activeServer!.sendControlMessage(
+    final x = args['x'] as int;
+    final y = args['y'] as int;
+    final width = args['width'] as int;
+    final height = args['height'] as int;
+    final hScroll = args['hScroll'] as int;
+    final vScroll = args['vScroll'] as int;
+    _viewController.sendControlMessage(
       ScrcpyInjectScrollMessage(
         x: x,
         y: y,
@@ -425,57 +345,144 @@ final class ScrcpyMcpServer extends MCPServer
         vScroll: vScroll,
       ),
     );
-
-    return CallToolResult(
-      content: [
-        Content.text(
-          text: 'Scroll event sent: ($x, $y) h=$hScroll v=$vScroll',
-        ),
-      ],
-    );
+    return CallToolResult.fromContent([
+      TextContent(
+        text: 'Scroll event sent: ($x, $y) h=$hScroll v=$vScroll',
+      ),
+    ]);
   }
 
+  Future<CallToolResult> _takeScreenshot(
+    Map<String, dynamic> args,
+    RequestHandlerExtra extra,
+  ) async {
+    final deviceIdArg = args['device_id'] as String?;
+    final deviceId = deviceIdArg ?? _connectedDeviceId;
+    if (deviceId != null) {
+      return _doScreenshot(deviceId);
+    }
+    final devices = await _adb.getDevices();
+    if (devices.isEmpty) {
+      return const CallToolResult(
+        content: [TextContent(text: 'No devices connected.')],
+        isError: true,
+      );
+    }
+    return _doScreenshot(devices.first);
+  }
+
+  Future<CallToolResult> _doScreenshot(String deviceId) async {
+    try {
+      final pngBytes = await _adb.takeScreenshot(deviceId);
+      return CallToolResult.fromContent([
+        ImageContent(
+          data: base64Encode(pngBytes),
+          mimeType: 'image/png',
+        ),
+      ]);
+    } on Exception catch (e) {
+      return CallToolResult(
+        content: [TextContent(text: 'Screenshot failed: $e')],
+        isError: true,
+      );
+    }
+  }
+
+  // ── Resource implementations ──────────────────────────────────────────────
+
   Future<ReadResourceResult> _readDeviceList(
-    ReadResourceRequest request,
+    Uri uri,
+    RequestHandlerExtra extra,
   ) async {
     final devices = await _adb.getDevices();
     return ReadResourceResult(
       contents: [
         TextResourceContents(
-          uri: 'device://list',
-          text: jsonEncode(devices),
+          uri: uri.toString(),
           mimeType: 'application/json',
+          text: jsonEncode(devices),
         ),
       ],
     );
   }
 
   Future<ReadResourceResult> _readMirroringStatus(
-    ReadResourceRequest request,
+    Uri uri,
+    RequestHandlerExtra extra,
   ) async {
     final status = <String, dynamic>{
-      'active': _activeServer != null,
-      if (_activeServer != null) ...{
-        'device_id': _activeServer!.deviceId,
-        'proxy_url': _activeServer!.proxyUrl,
-        'player_url': _activeServer!.playerUrl,
-      },
+      'active': _viewController.isConnected,
+      if (_connectedDeviceId != null) 'device_id': _connectedDeviceId,
     };
     return ReadResourceResult(
       contents: [
         TextResourceContents(
-          uri: 'mirroring://status',
-          text: jsonEncode(status),
+          uri: uri.toString(),
           mimeType: 'application/json',
+          text: jsonEncode(status),
         ),
       ],
     );
   }
 
-  @override
-  Future<void> shutdown() async {
-    await _activeServer?.stop();
-    _activeServer = null;
-    await super.shutdown();
+  // ── Prompt implementations ────────────────────────────────────────────────
+
+  Future<GetPromptResult> _getControlDevicePrompt(
+    Map<String, dynamic>? args,
+    RequestHandlerExtra? extra,
+  ) async {
+    final deviceId = args?['device_id'] as String?;
+    final devices = await _adb.getDevices();
+    final deviceInfo = deviceId != null
+        ? 'Target device: $deviceId'
+        : 'Available devices: ${devices.join(", ")}';
+
+    return GetPromptResult(
+      description: 'Device control assistant',
+      messages: [
+        PromptMessage(
+          role: PromptMessageRole.user,
+          content: TextContent(
+            text: 'You are an Android device control assistant.\n\n'
+                '$deviceInfo\n\n'
+                'Available tools:\n'
+                '- list_devices, start_mirroring, stop_mirroring\n'
+                '- inject_key (Home=3, Back=4, AppSwitch=187)\n'
+                '- inject_touch, inject_text, inject_scroll\n'
+                '- take_screenshot\n\n'
+                'Help the user control their Android device.',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<GetPromptResult> _getTroubleshootPrompt(
+    Map<String, dynamic>? args,
+    RequestHandlerExtra? extra,
+  ) async {
+    final issue = args?['issue'] as String?;
+    final devices = await _adb.getDevices();
+
+    return GetPromptResult(
+      description: 'Device troubleshooting assistant',
+      messages: [
+        PromptMessage(
+          role: PromptMessageRole.user,
+          content: TextContent(
+            text: 'You are an Android device troubleshooting assistant.\n\n'
+                'Connected devices: '
+                '${devices.isEmpty ? "none" : devices.join(", ")}\n'
+                '${issue != null ? "Reported issue: $issue\n" : ""}\n'
+                'Common issues:\n'
+                '1. No devices: Check USB connection, enable USB debugging\n'
+                '2. Connection refused: Run adb kill-server\n'
+                '3. Mirroring fails: Check scrcpy server version\n'
+                '4. Black screen: Device may be locked\n\n'
+                'Help the user diagnose and resolve their issue.',
+          ),
+        ),
+      ],
+    );
   }
 }

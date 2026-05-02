@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mcp_dart/mcp_dart.dart';
+import 'package:scrcpy_mcp/src/mcp_http_server.dart';
 import 'package:scrcpy_mcp/src/scrcpy_mcp_server.dart';
 import 'package:scrcpy_view/scrcpy_view.dart';
 
@@ -423,6 +424,24 @@ void main() {
 
       final text = (result.messages.first.content as TextContent).text;
       expect(text, contains('black screen after unlock'));
+    });
+  });
+
+  group('McpHttpServer — lifecycle', () {
+    test('starts and stops cleanly on a local port', () async {
+      final adb = MockAdb();
+      final vc = MockScrcpyViewController();
+      addTearDown(vc.dispose);
+
+      final httpServer = McpHttpServer();
+
+      expect(httpServer.serverUrl, isNull);
+
+      await httpServer.start(port: 19817, viewController: vc, adb: adb);
+      expect(httpServer.serverUrl, 'http://localhost:19817/mcp');
+
+      await httpServer.stop();
+      expect(httpServer.serverUrl, isNull);
     });
   });
 }
