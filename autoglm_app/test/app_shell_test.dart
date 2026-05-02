@@ -25,6 +25,7 @@ void main() {
         overrides: [
           settingsRepositoryProvider.overrideWithValue(_MemoryRepo()),
           adbDevicesProvider.overrideWith((ref) => ['test-device']),
+          adbDevicesWithInfoProvider.overrideWith((_) async => []),
         ],
         child: TranslationProvider(
           child: MaterialApp.router(routerConfig: router),
@@ -58,6 +59,7 @@ void main() {
         overrides: [
           settingsRepositoryProvider.overrideWithValue(_MemoryRepo()),
           adbDevicesProvider.overrideWith((ref) => ['test-device']),
+          adbDevicesWithInfoProvider.overrideWith((_) async => []),
         ],
         child: TranslationProvider(
           child: MaterialApp.router(routerConfig: router),

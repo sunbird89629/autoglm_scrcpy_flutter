@@ -1,3 +1,4 @@
+import 'package:autoglm_adb/autoglm_adb.dart';
 import 'package:autoglm_app/i18n/strings.g.dart';
 import 'package:autoglm_app/providers/adb_provider.dart';
 import 'package:autoglm_app/providers/device_provider.dart';
@@ -12,7 +13,7 @@ class DevicesPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final devicesAsync = ref.watch(adbDevicesProvider);
+    final devicesAsync = ref.watch(adbDevicesWithInfoProvider);
     final selectedId = ref.watch(selectedDeviceIdProvider);
     final theme = Theme.of(context);
 
@@ -23,9 +24,7 @@ class DevicesPage extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: t.devices_page.refresh,
-            onPressed: () {
-              ref.invalidate(adbDevicesProvider);
-            },
+            onPressed: () => ref.invalidate(adbDevicesWithInfoProvider),
           ),
           IconButton(
             icon: const Icon(Icons.add_link),
@@ -41,11 +40,8 @@ class DevicesPage extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.error_outline,
-                size: 48,
-                color: theme.colorScheme.error,
-              ),
+              Icon(Icons.error_outline, size: 48,
+                  color: theme.colorScheme.error),
               const SizedBox(height: AppSpacing.md),
               Text('Error: $e'),
             ],
@@ -57,16 +53,11 @@ class DevicesPage extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.devices_other,
-                    size: 64,
-                    color: theme.colorScheme.outline,
-                  ),
+                  Icon(Icons.devices_other, size: 64,
+                      color: theme.colorScheme.outline),
                   const SizedBox(height: AppSpacing.md),
-                  Text(
-                    t.devices_page.no_devices,
-                    style: theme.textTheme.titleMedium,
-                  ),
+                  Text(t.devices_page.no_devices,
+                      style: theme.textTheme.titleMedium),
                 ],
               ),
             );
@@ -74,55 +65,16 @@ class DevicesPage extends ConsumerWidget {
           return ListView.separated(
             padding: AppSpacing.edgeInsetsMd,
             itemCount: devices.length,
-            separatorBuilder: (context, index) =>
+            separatorBuilder: (_, __) =>
                 const SizedBox(height: AppSpacing.sm),
-            itemBuilder: (context, index) {
-              final id = devices[index];
-              final isSelected = id == selectedId;
-              return Card(
-                elevation: isSelected ? 2 : 0,
-                color: isSelected
-                    ? theme.colorScheme.primaryContainer.withOpacity(0.3)
-                    : theme.colorScheme.surfaceContainerLow,
-                shape: RoundedRectangleBorder(
-                  borderRadius: AppRadius.borderMd,
-                  side: isSelected
-                      ? BorderSide(color: theme.colorScheme.primary, width: 2)
-                      : BorderSide(color: theme.colorScheme.outlineVariant),
-                ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.xs,
-                  ),
-                  leading: CircleAvatar(
-                    backgroundColor: isSelected
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.surfaceVariant,
-                    child: Icon(
-                      Icons.smartphone,
-                      color: isSelected
-                          ? theme.colorScheme.onPrimary
-                          : theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  title: Text(
-                    id,
-                    style: TextStyle(
-                      fontWeight: isSelected ? FontWeight.bold : null,
-                    ),
-                  ),
-                  subtitle: const Text('ADB Device'),
-                  trailing: isSelected
-                      ? Icon(
-                          Icons.check_circle,
-                          color: theme.colorScheme.primary,
-                        )
-                      : null,
-                  onTap: () {
-                    ref.read(selectedDeviceIdProvider.notifier).state = id;
-                  },
-                ),
+            itemBuilder: (_, index) {
+              final info = devices[index];
+              return _DeviceCard(
+                info: info,
+                isSelected: info.serial == selectedId,
+                onTap: () => ref
+                    .read(selectedDeviceIdProvider.notifier)
+                    .state = info.serial,
               );
             },
           );
@@ -155,12 +107,12 @@ class DevicesPage extends ConsumerWidget {
             const SizedBox(height: AppSpacing.md),
             TextField(
               controller: portCtrl,
+              keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: t.devices_page.port,
                 border: const OutlineInputBorder(),
                 prefixIcon: const Icon(Icons.numbers),
               ),
-              keyboardType: TextInputType.number,
             ),
             const SizedBox(height: AppSpacing.md),
             TextField(
@@ -183,19 +135,18 @@ class DevicesPage extends ConsumerWidget {
               final port = int.tryParse(portCtrl.text) ?? 0;
               try {
                 final client = await ref.read(adbClientProvider.future);
-                final res = await client.pair(ipCtrl.text, port, codeCtrl.text);
+                final res =
+                    await client.pair(ipCtrl.text, port, codeCtrl.text);
                 if (ctx.mounted) {
                   Navigator.pop(ctx);
-                  ScaffoldMessenger.of(
-                    ctx,
-                  ).showSnackBar(SnackBar(content: Text(res)));
-                  ref.invalidate(adbDevicesProvider);
+                  ScaffoldMessenger.of(ctx)
+                      .showSnackBar(SnackBar(content: Text(res)));
+                  ref.invalidate(adbDevicesWithInfoProvider);
                 }
               } on Exception catch (e) {
                 if (ctx.mounted) {
-                  ScaffoldMessenger.of(
-                    ctx,
-                  ).showSnackBar(SnackBar(content: Text(e.toString())));
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(content: Text(e.toString())));
                 }
               }
             },
@@ -203,6 +154,145 @@ class DevicesPage extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Private widgets
+// ---------------------------------------------------------------------------
+
+class _DeviceCard extends StatelessWidget {
+  const _DeviceCard({
+    required this.info,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final DeviceInfo info;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: isSelected ? 2 : 0,
+      color: isSelected
+          ? theme.colorScheme.primaryContainer.withOpacity(0.3)
+          : theme.colorScheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.borderMd,
+        side: isSelected
+            ? BorderSide(color: theme.colorScheme.primary, width: 2)
+            : BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.xs,
+        ),
+        leading: CircleAvatar(
+          backgroundColor: isSelected
+              ? theme.colorScheme.primary
+              : theme.colorScheme.surfaceVariant,
+          child: Icon(
+            Icons.smartphone,
+            color: isSelected
+                ? theme.colorScheme.onPrimary
+                : theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        title: Text(
+          info.displayName,
+          style: TextStyle(
+              fontWeight: isSelected ? FontWeight.bold : null),
+        ),
+        subtitle: _CardSubtitle(info: info),
+        trailing: _StatusBadge(status: info.status),
+        onTap: onTap,
+      ),
+    );
+  }
+}
+
+class _CardSubtitle extends StatelessWidget {
+  const _CardSubtitle({required this.info});
+  final DeviceInfo info;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final hasDetails =
+        info.manufacturer != null || info.androidVersion != null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (hasDetails)
+          Text(_detailLine(), style: theme.textTheme.bodySmall),
+        Row(
+          children: [
+            Flexible(
+              child: Text(
+                info.serial,
+                style: theme.textTheme.bodySmall,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Icon(
+              info.isWifi ? Icons.wifi : Icons.usb,
+              size: 14,
+              color: theme.colorScheme.outline,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  String _detailLine() {
+    final parts = <String>[];
+    if (info.manufacturer != null) parts.add(info.manufacturer!);
+    if (info.androidVersion != null) {
+      final sdk =
+          info.sdkVersion != null ? ' (API ${info.sdkVersion})' : '';
+      parts.add('Android ${info.androidVersion}$sdk');
+    }
+    return parts.join(' · ');
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.status});
+  final DeviceStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return switch (status) {
+      DeviceStatus.online => _badge(
+          theme, Icons.circle, 10, theme.colorScheme.primary, 'online'),
+      DeviceStatus.offline => _badge(
+          theme, Icons.circle_outlined, 10, theme.colorScheme.outline,
+          'offline'),
+      DeviceStatus.unauthorized => _badge(
+          theme, Icons.warning_amber, 14, theme.colorScheme.error,
+          'unauthorized'),
+    };
+  }
+
+  Widget _badge(ThemeData t, IconData icon, double size, Color color,
+      String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: size, color: color),
+        const SizedBox(width: 4),
+        Text(label,
+            style: TextStyle(fontSize: 12, color: color)),
+      ],
     );
   }
 }

@@ -26,3 +26,10 @@ final adbDevicesProvider = FutureProvider.autoDispose<List<String>>((
   final client = await ref.watch(adbClientProvider.future);
   return client.getDevices();
 });
+
+/// Provider for the list of connected devices with rich info.
+final adbDevicesWithInfoProvider =
+    FutureProvider.autoDispose<List<DeviceInfo>>((ref) async {
+  final client = await ref.watch(adbClientProvider.future);
+  return client.getDevicesWithInfo();
+});
