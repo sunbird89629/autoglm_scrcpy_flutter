@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "scrcpy_mcp_server": {
+      "type": "http",
+      "url": "http://localhost:7070/mcp"
+    }
+  }
+}
