@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:scrcpy_app/app_controller.dart';
 import 'package:scrcpy_app/device_list_widget.dart';
-import 'package:scrcpy_app/mcp_server_panel.dart';
+import 'package:scrcpy_app/views/control_view.dart';
 import 'package:scrcpy_view/scrcpy_view.dart';
 
 class HomePage extends StatelessWidget {
@@ -37,16 +37,10 @@ class HomePage extends StatelessWidget {
                   );
                 },
               );
-
-        return Column(
+        return Row(
           children: [
             Expanded(child: mainContent),
-            ListenableBuilder(
-              listenable: appController.mcpServerController,
-              builder: (_, __) => McpServerPanel(
-                controller: appController.mcpServerController,
-              ),
-            ),
+            ControlView(),
           ],
         );
       },

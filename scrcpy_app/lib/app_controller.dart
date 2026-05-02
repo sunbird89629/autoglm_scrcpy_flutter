@@ -25,6 +25,10 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void injectKey(int keycode) {
+    scrcpyViewController.injectKey(keycode);
+  }
+
   Future<void> connectDevice(final String deviceId) async {
     await scrcpyViewController.start(deviceId, onStarted: () {
       running = true;
