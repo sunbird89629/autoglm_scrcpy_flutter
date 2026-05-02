@@ -1,5 +1,6 @@
 import 'package:autoglm_adb/autoglm_adb.dart';
 import 'package:flutter/material.dart';
+import 'package:scrcpy_app/mcp_server_controller.dart';
 import 'package:scrcpy_app/scrcpy_app_adb.dart';
 import 'package:scrcpy_view/scrcpy_view.dart';
 
@@ -12,6 +13,11 @@ class AppController extends ChangeNotifier {
     adb: const ScrcpyAppAdb(AdbClient()),
   );
 
+  late final McpServerController mcpServerController = McpServerController(
+    viewController: scrcpyViewController,
+    adb: const ScrcpyAppAdb(AdbClient()),
+  );
+
   bool _running = false;
   bool get running => _running;
   set running(bool value) {
@@ -19,7 +25,7 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  connectDevice(final String deviceId) async {
+  Future<void> connectDevice(final String deviceId) async {
     await scrcpyViewController.start(deviceId, onStarted: () {
       running = true;
     });

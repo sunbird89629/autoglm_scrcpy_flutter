@@ -31,24 +31,16 @@ Future<void> main(List<String> args) async {
     ..writeln('Workspace: $workspaceRoot')
     ..writeln('Server: $serverPath\n');
 
-  // Start the server subprocess via `fvm dart run`.
-  final process = await Process.start(fvmExe, [
-    'dart',
-    'run',
-    serverPath,
-    ...adbArgs,
-  ]);
-
-  // Forward server stderr to our stderr for diagnostics.
-  process.stderr.transform(utf8.decoder).listen(stderr.write);
-
   final client = McpClient(
     const Implementation(name: 'scrcpy-mcp-test', version: '0.1.0'),
   );
 
+  // stderrMode defaults to inheritStdio, so server stderr flows to our stderr.
   final transport = StdioClientTransport(
-    process.stdout,
-    process.stdin,
+    StdioServerParameters(
+      command: fvmExe,
+      args: ['dart', 'run', serverPath, ...adbArgs],
+    ),
   );
 
   try {
@@ -125,7 +117,6 @@ Future<void> main(List<String> args) async {
     exitCode = 1;
   } finally {
     await client.close();
-    process.kill();
   }
 }
 
@@ -141,13 +132,13 @@ Future<void> _listTools(McpClient client) async {
 Future<void> _callTool(
   McpClient client,
   String name, [
-  Map<String, Object?>? arguments,
+  Map<String, dynamic>? arguments,
 ]) async {
   stdout.writeln('>> call $name${arguments != null ? " $arguments" : ""}');
   final result = await client.callTool(
-    CallToolRequest(name: name, arguments: arguments),
+    CallToolRequest(name: name, arguments: arguments ?? {}),
   );
-  if (result.isError ?? false) {
+  if (result.isError) {
     stdout.writeln('   ERROR: ${_textOf(result)}');
   } else {
     stdout.writeln('   ${_textOf(result)}');
@@ -212,13 +203,11 @@ String? _textOf(CallToolResult result) {
 
 /// Finds the fvm executable, checking PATH first, then common locations.
 String? _findFvm() {
-  // Check PATH via Platform.environment.
   final path = Platform.environment['PATH'] ?? '';
   for (final dir in path.split(':')) {
     final candidate = '$dir/fvm';
     if (File(candidate).existsSync()) return candidate;
   }
-  // Common homebrew location.
   const homebrew = '/opt/homebrew/bin/fvm';
   if (File(homebrew).existsSync()) return homebrew;
   return null;
