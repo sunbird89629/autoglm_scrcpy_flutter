@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 /// Abstract ADB operations required by the scrcpy protocol.
 ///
@@ -31,4 +32,8 @@ abstract class ScrcpyAdb {
 
   /// Push a file to the device.
   Future<void> push(String localPath, String remotePath, {String? deviceId});
+
+  /// Capture a screenshot of the device as raw PNG bytes.
+  /// Uses `adb exec-out screencap -p` for binary output.
+  Future<Uint8List> takeScreenshot(String deviceId);
 }
