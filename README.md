@@ -128,6 +128,39 @@ pubspec.yaml           # Dart workspace root, package list, and Melos scripts
 analysis_options.yaml  # Root analyzer configuration
 ```
 
+## TODO
+
+### Phase 2 — Device Management
+
+- [ ] Pairing/connect flow: validation, loading state, success/failure snackbar, post-pair auto-refresh
+- [ ] ADB error state handling: unauthorized prompt, offline retry, missing ADB binary, failed platform-tools download
+- [ ] Device connect/disconnect notification (auto-refresh or stream-based)
+- [ ] Tests: `AdbBinaryManager` lifecycle, provider refresh, device selection edge cases
+
+### Phase 3 — Scrcpy Mirroring
+
+- [ ] Idempotent `ScrcpyServer.start()` / `stop()` — survive partial startup failure without leaving zombie processes
+- [ ] Surface stream errors, proxy readiness status, and server logs in the UI
+- [ ] Reconnect/restart button when device disconnects or scrcpy process exits unexpectedly
+- [ ] Verify touch coordinate mapping and all control messages against a real device
+- [ ] Tests: packet fragmentation, keyframe injection timing, multi-client proxy connection
+
+### Phase 4 — Desktop App Shell
+
+- [ ] `autoglm_app` device sidebar: selected-device details, stream status, start/stop mirroring button
+- [ ] `ChatPage`: screen preview panel, task input, live execution log, agent state indicator
+- [ ] `HistoryPage`: search bar, date/status filters, step detail panel, trace timing view
+- [ ] `SettingsPage`: LLM provider / model / base URL / API key, MCP server toggle + port, logs path, diagnostics
+
+### Phase 5 — Agent Execution Loop
+
+- [ ] Define agent runtime: task request → screen observe → tool call → result → trace span → history step
+- [ ] First tool set: screenshot, tap, swipe, type, key event, wait, shell command
+- [ ] Persist runs as conversation + steps + trace so failures are inspectable
+- [ ] Cancellation, timeouts, and explicit agent state in the UI
+
+---
+
 ## Roadmap
 
 | Phase | Area | Status | Goal |
