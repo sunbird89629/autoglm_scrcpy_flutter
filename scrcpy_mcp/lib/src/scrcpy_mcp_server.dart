@@ -7,13 +7,14 @@ import 'package:scrcpy_view/scrcpy_view.dart';
 class ScrcpyMcpServer {
   /// Creates a scrcpy MCP server.
   ///
-  /// [viewController] is shared with the UI so both the widget and the MCP
-  /// server operate on the same mirroring session.
+  /// [session] controls the active mirroring session (start, stop, inject).
+  /// Typically a [ScrcpyViewController] shared with the UI so both the widget
+  /// and the MCP server operate on the same session.
   /// [adb] provides device enumeration and screenshot capture.
   ScrcpyMcpServer({
-    required ScrcpyViewController viewController,
+    required ScrcpySession session,
     required ScrcpyAdb adb,
-  })  : _viewController = viewController,
+  })  : _session = session,
         _adb = adb {
     _mcpServer = McpServer(
       const Implementation(name: 'scrcpy-mcp', version: '0.2.0'),
@@ -28,7 +29,7 @@ class ScrcpyMcpServer {
     _registerAll();
   }
 
-  final ScrcpyViewController _viewController;
+  final ScrcpySession _session;
   final ScrcpyAdb _adb;
   late final McpServer _mcpServer;
   String? _connectedDeviceId;
@@ -212,15 +213,15 @@ class ScrcpyMcpServer {
   ) async {
     final deviceId = args['device_id'] as String;
     try {
-      await _viewController.start(deviceId);
+      await _session.start(deviceId);
       _connectedDeviceId = deviceId;
       return CallToolResult.fromContent([
         TextContent(
           text: jsonEncode({
             'status': 'mirroring',
             'device_id': deviceId,
-            'proxy_url': _viewController.server?.proxyUrl,
-            'player_url': _viewController.server?.playerUrl,
+            'proxy_url': _session.proxyUrl,
+            'player_url': _session.playerUrl,
           }),
         ),
       ]);
@@ -236,12 +237,12 @@ class ScrcpyMcpServer {
     Map<String, dynamic> args,
     RequestHandlerExtra extra,
   ) async {
-    if (!_viewController.isConnected) {
+    if (!_session.isConnected) {
       return CallToolResult.fromContent(
         [const TextContent(text: 'No active mirroring session.')],
       );
     }
-    await _viewController.stop();
+    await _session.stop();
     _connectedDeviceId = null;
     return CallToolResult.fromContent(
       [const TextContent(text: 'Mirroring stopped.')],
@@ -252,7 +253,7 @@ class ScrcpyMcpServer {
     Map<String, dynamic> args,
     RequestHandlerExtra extra,
   ) async {
-    if (!_viewController.isConnected) {
+    if (!_session.isConnected) {
       return const CallToolResult(
         content: [TextContent(text: 'No active mirroring session.')],
         isError: true,
@@ -260,7 +261,7 @@ class ScrcpyMcpServer {
     }
     final keycode = args['keycode'] as int;
     final action = args['action'] as int? ?? ScrcpyAction.down;
-    _viewController.sendControlMessage(
+    _session.sendControlMessage(
       ScrcpyInjectKeyMessage(action: action, keycode: keycode),
     );
     return CallToolResult.fromContent([
@@ -274,7 +275,7 @@ class ScrcpyMcpServer {
     Map<String, dynamic> args,
     RequestHandlerExtra extra,
   ) async {
-    if (!_viewController.isConnected) {
+    if (!_session.isConnected) {
       return const CallToolResult(
         content: [TextContent(text: 'No active mirroring session.')],
         isError: true,
@@ -285,7 +286,7 @@ class ScrcpyMcpServer {
     final width = args['width'] as int;
     final height = args['height'] as int;
     final action = args['action'] as int? ?? ScrcpyAction.down;
-    _viewController.sendControlMessage(
+    _session.sendControlMessage(
       ScrcpyInjectTouchMessage(
         action: action,
         pointerId: 0,
@@ -304,14 +305,14 @@ class ScrcpyMcpServer {
     Map<String, dynamic> args,
     RequestHandlerExtra extra,
   ) async {
-    if (!_viewController.isConnected) {
+    if (!_session.isConnected) {
       return const CallToolResult(
         content: [TextContent(text: 'No active mirroring session.')],
         isError: true,
       );
     }
     final text = args['text'] as String;
-    _viewController.injectText(text);
+    _session.injectText(text);
     return CallToolResult.fromContent(
       [TextContent(text: 'Text sent: "$text"')],
     );
@@ -321,7 +322,7 @@ class ScrcpyMcpServer {
     Map<String, dynamic> args,
     RequestHandlerExtra extra,
   ) async {
-    if (!_viewController.isConnected) {
+    if (!_session.isConnected) {
       return const CallToolResult(
         content: [TextContent(text: 'No active mirroring session.')],
         isError: true,
@@ -333,7 +334,7 @@ class ScrcpyMcpServer {
     final height = args['height'] as int;
     final hScroll = args['hScroll'] as int;
     final vScroll = args['vScroll'] as int;
-    _viewController.sendControlMessage(
+    _session.sendControlMessage(
       ScrcpyInjectScrollMessage(
         x: x,
         y: y,
@@ -409,7 +410,7 @@ class ScrcpyMcpServer {
     RequestHandlerExtra extra,
   ) async {
     final status = <String, dynamic>{
-      'active': _viewController.isConnected,
+      'active': _session.isConnected,
       if (_connectedDeviceId != null) 'device_id': _connectedDeviceId,
     };
     return ReadResourceResult(

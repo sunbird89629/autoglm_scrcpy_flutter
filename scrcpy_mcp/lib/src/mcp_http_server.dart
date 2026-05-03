@@ -10,12 +10,12 @@ class McpHttpServer {
 
   Future<void> start({
     required int port,
-    required ScrcpyViewController viewController,
+    required ScrcpySession session,
     required ScrcpyAdb adb,
   }) async {
     _server = StreamableMcpServer(
       serverFactory: (_) => ScrcpyMcpServer(
-        viewController: viewController,
+        session: session,
         adb: adb,
       ).mcpServer,
       port: port,

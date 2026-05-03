@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
-import 'mcp_server_controller.dart';
+import 'package:scrcpy_app/mcp_server_controller.dart';
 
 class McpServerPanel extends StatefulWidget {
-  const McpServerPanel({super.key, required this.controller});
+  const McpServerPanel({required this.controller, super.key});
 
   final McpServerController controller;
 
@@ -46,7 +45,7 @@ class _McpServerPanelState extends State<McpServerPanel> {
       children: [
         Row(
           children: [
-            const Text('MCP Server'),
+            const Text('MCP'),
             const SizedBox(width: 12),
             const Text('Port:'),
             const SizedBox(width: 8),

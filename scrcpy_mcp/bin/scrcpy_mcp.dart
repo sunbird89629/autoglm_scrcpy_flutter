@@ -12,7 +12,7 @@ void main(List<String> args) async {
 
   final viewController = ScrcpyViewController(adb: scrcpyAdb);
   final server = ScrcpyMcpServer(
-    viewController: viewController,
+    session: viewController,
     adb: scrcpyAdb,
   );
 

@@ -38,7 +38,7 @@ void main() {
     final vc = _MockViewController();
     addTearDown(vc.dispose);
     final ctrl = McpServerController(
-      viewController: vc,
+      session: vc,
       adb: _MockAdb(),
     );
     addTearDown(ctrl.dispose);
@@ -53,7 +53,7 @@ void main() {
     final vc = _MockViewController();
     addTearDown(vc.dispose);
     final ctrl = McpServerController(
-      viewController: vc,
+      session: vc,
       adb: _MockAdb(),
     );
     addTearDown(ctrl.dispose);
@@ -71,7 +71,7 @@ void main() {
     final vc = _MockViewController();
     addTearDown(vc.dispose);
     final ctrl = McpServerController(
-      viewController: vc,
+      session: vc,
       adb: _MockAdb(),
     );
     addTearDown(ctrl.dispose);

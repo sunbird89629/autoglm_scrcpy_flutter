@@ -4,12 +4,12 @@ import 'package:scrcpy_view/scrcpy_view.dart';
 
 class McpServerController extends ChangeNotifier {
   McpServerController({
-    required ScrcpyViewController viewController,
+    required ScrcpySession session,
     required ScrcpyAdb adb,
-  })  : _viewController = viewController,
+  })  : _session = session,
         _adb = adb;
 
-  final ScrcpyViewController _viewController;
+  final ScrcpySession _session;
   final ScrcpyAdb _adb;
   final _httpServer = McpHttpServer();
 
@@ -34,7 +34,7 @@ class McpServerController extends ChangeNotifier {
     try {
       await _httpServer.start(
         port: _port,
-        viewController: _viewController,
+        session: _session,
         adb: _adb,
       );
       _running = true;

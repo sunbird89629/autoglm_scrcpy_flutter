@@ -14,7 +14,7 @@ class AppController extends ChangeNotifier {
   );
 
   late final McpServerController mcpServerController = McpServerController(
-    viewController: scrcpyViewController,
+    session: scrcpyViewController,
     adb: const ScrcpyAppAdb(AdbClient()),
   );
 

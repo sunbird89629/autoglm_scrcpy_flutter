@@ -4,6 +4,7 @@ import 'package:scrcpy_view/src/control_message.dart';
 import 'package:scrcpy_view/src/scrcpy_adb.dart';
 import 'package:scrcpy_view/src/scrcpy_logger.dart';
 import 'package:scrcpy_view/src/scrcpy_server.dart';
+import 'package:scrcpy_view/src/scrcpy_session.dart';
 
 /// Controller for `ScrcpyView` that owns the device mirroring session
 /// and exposes input injection to external code.
@@ -25,7 +26,7 @@ import 'package:scrcpy_view/src/scrcpy_server.dart';
 /// await controller.stop();
 /// controller.dispose();
 /// ```
-class ScrcpyViewController extends ChangeNotifier {
+class ScrcpyViewController extends ChangeNotifier implements ScrcpySession {
   /// Creates a controller backed by an injected ADB bridge.
   ScrcpyViewController({
     required ScrcpyAdb adb,
@@ -61,6 +62,7 @@ class ScrcpyViewController extends ChangeNotifier {
   // ── Readable state ────────────────────────────────────────────────────────
 
   /// Whether a mirroring session is currently active.
+  @override
   bool get isConnected => _server != null;
 
   /// Whether a session is starting or active. Use to disable the Start button.
@@ -69,9 +71,16 @@ class ScrcpyViewController extends ChangeNotifier {
   /// The active `ScrcpyServer`, or `null` if no session is active.
   ScrcpyServer? get server => _server;
 
+  @override
+  String? get proxyUrl => _server?.proxyUrl;
+
+  @override
+  String? get playerUrl => _server?.playerUrl;
+
   /// Starts a mirroring session for [deviceId].
   ///
   /// No-ops if a session is already starting or active.
+  @override
   Future<void> start(
     String deviceId, {
     ScrcpyLogger? logger,
@@ -106,6 +115,7 @@ class ScrcpyViewController extends ChangeNotifier {
   }
 
   /// Stops the active mirroring session.
+  @override
   Future<void> stop() async {
     final server = _server;
     final onStopped = _onStopped;
@@ -126,6 +136,7 @@ class ScrcpyViewController extends ChangeNotifier {
   // ── Public control API ────────────────────────────────────────────────────
 
   /// Sends a raw control message to the device.
+  @override
   void sendControlMessage(ScrcpyControlMessage message) {
     _server?.sendControlMessage(message);
   }
@@ -149,6 +160,7 @@ class ScrcpyViewController extends ChangeNotifier {
   }
 
   /// Injects text into the focused field on the device.
+  @override
   void injectText(String text) {
     sendControlMessage(ScrcpyInjectTextMessage(text));
   }

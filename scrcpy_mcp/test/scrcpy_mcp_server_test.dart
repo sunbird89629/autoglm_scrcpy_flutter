@@ -178,7 +178,7 @@ class _TestEnv {
   _TestEnv({List<String>? devices})
       : adb = MockAdb(devices: devices ?? ['device1']),
         viewController = MockScrcpyViewController() {
-    server = ScrcpyMcpServer(viewController: viewController, adb: adb);
+    server = ScrcpyMcpServer(session: viewController, adb: adb);
   }
 
   final MockAdb adb;
@@ -504,8 +504,10 @@ void main() {
 
       expect(httpServer.serverUrl, isNull);
 
-      await httpServer.start(port: 19817, viewController: vc, adb: adb);
+      await httpServer.start(port: 19817, session: vc, adb: adb);
       expect(httpServer.serverUrl, 'http://localhost:19817/mcp');
+
+      await Future.delayed(Duration(hours: 1), () {});
 
       await httpServer.stop();
       expect(httpServer.serverUrl, isNull);
