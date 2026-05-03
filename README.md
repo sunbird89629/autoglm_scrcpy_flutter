@@ -145,23 +145,41 @@ analysis_options.yaml  # Root analyzer configuration
 ### Phase Details
 
 **Phase 2: Device Management**
-- Show connected USB and wireless devices with model/name/status, not only raw device IDs.
-- Finish pairing/connect flows with validation, loading states, success/failure messages, and refresh behavior.
-- Handle common ADB states: unauthorized, offline, multiple devices, missing ADB, failed platform-tools download.
-- Add focused tests around `AdbClient`, `AdbBinaryManager`, provider refresh, and device selection.
+
+Done:
+- Rich device info display: model name, manufacturer, Android version, connection type (USB / Wi-Fi icon), and online / offline / unauthorized status badge (`DeviceInfo`, `getDevicesWithInfo()`, `adbDevicesWithInfoProvider`)
+
+Remaining:
+- Pairing/connect flows: validation, loading states, success/failure feedback, and post-pair refresh
+- ADB error state handling: unauthorized, offline, multiple devices, missing ADB binary, failed platform-tools download
+- Auto-refresh or device-connect/disconnect notification
+- Focused tests for `AdbBinaryManager`, provider refresh, and device selection edge cases
 
 **Phase 3: Scrcpy Mirroring**
-- Make `ScrcpyServer.start()` and `stop()` idempotent and resilient to partial startup failure.
-- Surface metadata, proxy readiness, server logs, and stream errors in the UI.
-- Add reconnect/restart controls when the device disconnects or the scrcpy process exits.
-- Verify control messages for touch, text, back/home/app switch, and coordinate mapping.
-- Keep parser/proxy tests around packet fragmentation, config packets, keyframes, and client connection timing.
+
+Done:
+- `ScrcpyAdb.takeScreenshot()` via ADB `exec-out screencap`
+- `McpHttpServer` / `McpServerController` / `McpServerPanel` in `scrcpy_app` — HTTP MCP server with start/stop UI
+- MCP tools: `list_devices`, `start_mirroring`, `stop_mirroring`, `inject_key/touch/text/scroll`, `take_screenshot`
+- WebSocket-based web player for H.264 preview
+
+Remaining:
+- Idempotent `ScrcpyServer.start()` / `stop()` resilient to partial startup failure
+- Surface stream errors, proxy readiness, and server logs in the UI
+- Reconnect/restart controls when the device disconnects or the scrcpy process exits
+- Verify touch coordinate mapping and control messages against a real device
+- Parser/proxy tests for packet fragmentation, keyframe injection, and client connection timing
 
 **Phase 4: Desktop App Shell**
-- Replace the current device sidebar placeholder with selected-device details, stream status, and quick controls.
-- Turn `ChatPage` into the main operation workspace: screen preview, task input, execution log, and current agent state.
-- Expand `HistoryPage` with search, filters, details, and step replay/debug views.
-- Expand `SettingsPage` for provider/model/base URL/API key, MCP settings, logs path, and diagnostics.
+
+Done:
+- `DevicesPage` rewritten with rich device cards (model, status, connection type)
+
+Remaining:
+- Device sidebar in `autoglm_app`: selected-device details, stream status, and quick controls
+- Turn `ChatPage` into the main operation workspace: screen preview, task input, execution log, and agent state indicator
+- Expand `HistoryPage` with search, filters, details panel, and step replay/debug view
+- Expand `SettingsPage` for provider/model/base URL/API key, MCP server settings, logs path, and diagnostics
 
 **Phase 5: Agent Execution Loop**
 - Define the agent runtime boundary: task request, screen observation, tool call, result, trace span, history step.
@@ -216,10 +234,11 @@ Current test coverage:
 
 | Package | Test focus |
 |---|---|
-| `autoglm_app` | Router, shell layout, settings UI, locale/theme providers |
-| `packages/autoglm_adb` | ADB command parsing, process runner, binary manager |
+| `autoglm_app` | Router, shell layout, settings UI, locale/theme providers, device cards (all status/connection variants) |
+| `packages/autoglm_adb` | ADB command parsing, process runner, binary manager, `getDevicesWithInfo()` parsing and degradation |
 | `packages/autoglm_core` | Settings, history storage, trace records, logger behavior |
 | `scrcpy_view` | Control message encoding, server wiring, stream parser |
+| `scrcpy_mcp` | MCP tool/resource/prompt contracts, HTTP server lifecycle |
 
 Packages without a `test/` directory are skipped by the default command.
 ADB tests that require a real Android device should stay skipped by default or
