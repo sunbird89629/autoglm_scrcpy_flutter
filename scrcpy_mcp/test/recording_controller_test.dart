@@ -122,5 +122,39 @@ void main() {
       expect(s.startTime, isNotNull);
       expect(s.remotePath, startsWith('/sdcard/mcp_rec_'));
     });
+
+    // ── Stop ───────────────────────────────────────────────────────────────
+
+    test('stop() sends SIGINT and sets isRecording to false', () async {
+      await ctrl.start('emulator-5554');
+      await ctrl.stop(savePath: '/tmp/rec_test.mp4');
+
+      expect(ctrl.isRecording, isFalse);
+      expect(adb._lastProcess!.wasKilled, isTrue);
+    });
+
+    test('stop() calls pullFile then removeFile with matching paths', () async {
+      await ctrl.start('emulator-5554');
+      await ctrl.stop(savePath: '/tmp/rec_test.mp4');
+
+      expect(adb.pullCalls, hasLength(1));
+      expect(adb.removeCalls, hasLength(1));
+      expect(adb.pullCalls.first.$2, adb.removeCalls.first.$2);
+    });
+
+    test('stop() returns the requested local path', () async {
+      await ctrl.start('emulator-5554');
+      final localPath = await ctrl.stop(savePath: '/tmp/rec_out.mp4');
+
+      expect(localPath, '/tmp/rec_out.mp4');
+    });
+
+    test('stop() uses default ~/Downloads path when savePath is null', () async {
+      await ctrl.start('emulator-5554');
+      final localPath = await ctrl.stop();
+
+      expect(localPath, contains('Downloads/scrcpy_records/rec_'));
+      expect(localPath, endsWith('.mp4'));
+    });
   });
 }
