@@ -385,27 +385,16 @@ class _ConnectPairDialogState extends ConsumerState<_ConnectPairDialog> {
       if (!mounted) return;
       final serial = '${_ipCtrl.text.trim()}:${_portCtrl.text.trim()}';
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(t.devices_page.connected_to(serial: serial))),
-      );
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          SnackBar(content: Text(t.devices_page.connected_to(serial: serial))),
+        );
       ref.invalidate(adbDevicesWithInfoProvider);
     } on AdbException catch (e) {
       if (!mounted) return;
-      if (e.message.contains('already connected')) {
-        final serial =
-            '${_ipCtrl.text.trim()}:${_portCtrl.text.trim()}';
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content:
-                  Text(t.devices_page.connected_to(serial: serial))),
-        );
-        ref.invalidate(adbDevicesWithInfoProvider);
-      } else {
-        _showSnackbar(e.message);
-        setState(() => _step = _DialogStep.pair);
-      }
+      _showSnackbar(e.message);
+      setState(() => _step = _DialogStep.pair);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
