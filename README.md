@@ -60,31 +60,57 @@ autoglm_app/           # Main AutoGLM Flutter desktop app
     main.dart          # App bootstrap: logging, settings repository, MCP toolkit, MediaKit
     app.dart           # MaterialApp, themes, NavigationRail shell
     router.dart        # go_router routes: devices/chat/workflows/history/settings
-    pages/             # Top-level app pages
-    providers/         # Riverpod wiring for settings, ADB, devices, scrcpy, history, locale
-    i18n/              # slang translation JSON files
+    pages/
+      devices_page.dart    # Device list with rich cards (model, status, connection type)
+      chat_page.dart       # AI agent chat workspace (placeholder)
+      history_page.dart    # Execution history viewer (placeholder)
+      workflows_page.dart  # Workflow management (placeholder)
+      settings_page.dart   # Theme, locale, LLM config
+    providers/
+      adb_provider.dart        # AdbClient, AdbBinaryManager, adbDevicesProvider, adbDevicesWithInfoProvider
+      device_provider.dart     # selectedDeviceIdProvider
+      scrcpy_provider.dart     # ScrcpyViewController lifecycle
+      history_provider.dart    # HistoryDatabase, TraceManager
+      settings_provider.dart   # SettingsRepository
+      locale_provider.dart     # localeProvider
+      theme_mode_provider.dart # themeModeProvider
+    scrcpy/
+      autoglm_scrcpy_bridge.dart  # Adapter: AdbClient → ScrcpyAdb, appLogger → ScrcpyLogger
+    theme/
+      design_tokens.dart  # AppSpacing, AppRadius shared constants
+      light_theme.dart
+      dark_theme.dart
+    i18n/               # slang JSON source files + generated strings.g.dart
   pubspec.yaml
 
-scrcpy_app/            # Standalone scrcpy demo/test Flutter app
+scrcpy_app/            # Standalone scrcpy client (device selector + mirroring + MCP panel)
   lib/
     main.dart
     scrcpy_app.dart
-    app_controller.dart
-    device_list_widget.dart
-    home_page.dart
-  macos/               # macOS runner files
+    app_controller.dart        # Wires ScrcpyViewController + McpServerController
+    device_list_widget.dart    # Device picker
+    home_page.dart             # Main layout: viewer + controls + MCP panel
+    scrcpy_app_adb.dart        # Adapter: AdbClient → ScrcpyAdb for scrcpy_app
+    mcp_server_controller.dart # Start/stop McpHttpServer, exposes port + URL + error state
+    mcp_server_panel.dart      # UI panel: port field, start/stop, copy URL
+    views/
+      control_view.dart        # Touch/key/scroll control overlay
+      control_button_widget.dart
+    widgets/
+      control_button.dart
+  macos/               # macOS runner + entitlements
   pubspec.yaml
 
-scrcpy_view/           # Reusable scrcpy protocol + Flutter viewing package
+scrcpy_view/           # Reusable Flutter package: scrcpy protocol + WebView widget
   lib/
     scrcpy_view.dart   # Public exports
     src/
-      scrcpy_server.dart
-      scrcpy_stream_parser.dart
-      scrcpy_proxy_server.dart
-      scrcpy_websocket_server.dart
-      control_message.dart
-      mpeg_ts_muxer.dart
+      scrcpy_server.dart          # Full lifecycle: push JAR, ADB forward, launch, bridge sockets
+      scrcpy_stream_parser.dart   # Binary frame parser: device-info header + PTS/length frames
+      scrcpy_proxy_server.dart    # HTTP server remuxing H.264 → MPEG-TS for media_kit
+      scrcpy_websocket_server.dart # WebSocket + static HTTP for web player; SPS/PPS injection
+      control_message.dart        # Scrcpy v3 control protocol: keycode, text, touch, scroll
+      mpeg_ts_muxer.dart          # Custom 188-byte MPEG-TS muxer (90 kHz PTS)
       backends/
   assets/
     scrcpy-server-v3.3.4
@@ -93,10 +119,15 @@ scrcpy_view/           # Reusable scrcpy protocol + Flutter viewing package
   test/
   pubspec.yaml
 
-scrcpy_mcp/            # MCP-facing wrapper around scrcpy operations
+scrcpy_mcp/            # MCP server wrapping scrcpy operations
   lib/
-    scrcpy_mcp.dart
-    src/scrcpy_mcp_server.dart
+    scrcpy_mcp.dart    # Public exports
+    src/
+      scrcpy_mcp_server.dart   # McpServer with 8 tools, 2 resources, 2 prompts
+      mcp_http_server.dart     # StreamableMcpServer HTTP wrapper
+      scrcpy_mcp_adapters.dart # AdbClient → ScrcpyAdb adapter for MCP context
+  bin/
+    scrcpy_mcp_test.dart       # CLI entry point for Stdio MCP server
   test/
   pubspec.yaml
 
@@ -105,19 +136,20 @@ packages/
     lib/
       autoglm_core.dart
       src/
-        history/
+        history/   # HistoryDatabase (SQLite via sqflite_common_ffi)
         models/
-        settings/
-        trace/
+        settings/  # Settings, SettingsRepository
+        trace/     # TraceManager (daily-rolling JSONL)
     test/
 
   autoglm_adb/         # ADB binary lifecycle and command wrapper
     lib/
       autoglm_adb.dart
       src/
-        adb_binary_manager.dart
-        adb_client.dart
+        adb_binary_manager.dart  # Downloads and caches platform-tools
+        adb_client.dart          # shell, forward, push, pair, connect, getDevices, getDevicesWithInfo
         adb_process_runner.dart
+        device_info.dart         # DeviceInfo, DeviceStatus (model, manufacturer, Android version, connection type)
         exceptions.dart
     test/
 
