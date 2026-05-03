@@ -15,7 +15,7 @@ class _MockRecordingAdb implements RecordingAdb {
   final List<(String, String)> removeCalls = [];
 
   _FakeProcess? _lastProcess;
-  Object? pullError;
+  Exception? pullError;
 
   void simulateUnexpectedExit(int code) =>
       _lastProcess!._completer.complete(code);
