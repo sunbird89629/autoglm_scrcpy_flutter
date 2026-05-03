@@ -195,7 +195,7 @@ class _DeviceCard extends StatelessWidget {
         leading: CircleAvatar(
           backgroundColor: isSelected
               ? theme.colorScheme.primary
-              : theme.colorScheme.surfaceVariant,
+              : theme.colorScheme.surfaceContainerHighest,
           child: Icon(
             Icons.smartphone,
             color: isSelected
