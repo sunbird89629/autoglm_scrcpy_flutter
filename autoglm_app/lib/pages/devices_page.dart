@@ -279,7 +279,7 @@ class _ConnectPairDialogState extends ConsumerState<_ConnectPairDialog> {
             ),
           TextField(
             controller: _ipCtrl,
-            enabled: !_isLoading,
+            enabled: !_isLoading && _step == _DialogStep.connect,
             decoration: InputDecoration(
               labelText: t.devices_page.ip,
               border: const OutlineInputBorder(),
@@ -289,7 +289,7 @@ class _ConnectPairDialogState extends ConsumerState<_ConnectPairDialog> {
           const SizedBox(height: AppSpacing.md),
           TextField(
             controller: _portCtrl,
-            enabled: !_isLoading,
+            enabled: !_isLoading && _step == _DialogStep.connect,
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
               labelText: t.devices_page.port,
