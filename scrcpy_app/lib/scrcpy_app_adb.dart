@@ -21,6 +21,7 @@ class ScrcpyAppAdb implements ScrcpyAdb {
     String? deviceId,
     Duration timeout = const Duration(seconds: 30),
   }) {
+    print('ADB Shell: $arguments, deviceId: $deviceId');
     return _client.shell(arguments, deviceId: deviceId, timeout: timeout);
   }
 
@@ -31,6 +32,7 @@ class ScrcpyAppAdb implements ScrcpyAdb {
     String? deviceId,
     bool noRebind = false,
   }) {
+    print('ADB Forward: $local -> $remote, deviceId: $deviceId');
     return _client.forward(
       local,
       remote,
@@ -41,11 +43,13 @@ class ScrcpyAppAdb implements ScrcpyAdb {
 
   @override
   Future<void> forwardRemove(String local, {String? deviceId}) {
+    print('ADB Forward Remove: $local, deviceId: $deviceId');
     return _client.forwardRemove(local, deviceId: deviceId);
   }
 
   @override
   Future<void> push(String localPath, String remotePath, {String? deviceId}) {
+    print('ADB Push: $localPath -> $remotePath, deviceId: $deviceId');
     return _client.push(localPath, remotePath, deviceId: deviceId);
   }
 

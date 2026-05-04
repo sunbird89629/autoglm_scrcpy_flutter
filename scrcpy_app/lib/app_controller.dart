@@ -4,13 +4,28 @@ import 'package:scrcpy_app/mcp_server_controller.dart';
 import 'package:scrcpy_app/scrcpy_app_adb.dart';
 import 'package:scrcpy_view/scrcpy_view.dart';
 
+class ConsoleScrcpyLogger implements ScrcpyLogger {
+  const ConsoleScrcpyLogger();
+  @override
+  void debug(String message) => print('DEBUG: $message');
+  @override
+  void info(String message) => print('INFO: $message');
+  @override
+  void warn(String message, [Object? error, StackTrace? stack]) =>
+      print('WARN: $message $error');
+  @override
+  void error(String message, [Object? error, StackTrace? stack]) =>
+      print('ERROR: $message $error');
+}
+
 class AppController extends ChangeNotifier {
   AppController._();
   static final _instance = AppController._();
   factory AppController() => _instance;
 
   final scrcpyViewController = ScrcpyViewController(
-    adb: ScrcpyAppAdb(AdbClientImpl()),
+    adb: ScrcpyAppAdb(const AdbClientImpl()),
+    logger: const ConsoleScrcpyLogger(),
   );
 
   late final McpServerController mcpServerController = McpServerController(
