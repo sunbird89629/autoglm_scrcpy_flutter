@@ -2,4 +2,4 @@
 library;
 
 export 'app_logger.dart';
-export 'applog/class_logger.dart';
+export 'package:logging/logging.dart' show Level, LogRecord, Logger;
