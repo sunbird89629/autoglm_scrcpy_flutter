@@ -19,7 +19,7 @@ void main() {
 
     test('run throws AdbException on non-zero exit code', () async {
       const runner = AdbProcessRunnerImpl();
-      expect(
+      await expectLater(
         () => runner.run('ls', ['/path-does-not-exist']),
         throwsA(isA<AdbException>()),
       );
@@ -27,7 +27,7 @@ void main() {
 
     test('runRaw throws AdbException on timeout', () async {
       const runner = AdbProcessRunnerImpl();
-      expect(
+      await expectLater(
         () => runner.runRaw(
           'sleep',
           ['2'],
@@ -41,7 +41,7 @@ void main() {
 
     test('run throws AdbException on timeout', () async {
       const runner = AdbProcessRunnerImpl();
-      expect(
+      await expectLater(
         () => runner.run(
           'sleep',
           ['2'],
