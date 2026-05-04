@@ -3,11 +3,14 @@ library;
 
 // ignore_for_file: avoid_print, Console output is the primary sink for this logger.
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart';
+
+StreamSubscription<LogRecord>? _subscription;
 
 /// Configures the root logger with console and optional file output.
 ///
@@ -29,7 +32,8 @@ void initLogging({String? logsDir}) {
 
   _pruneOldFiles(dir);
 
-  Logger.root.onRecord.listen((record) {
+  _subscription?.cancel();
+  _subscription = Logger.root.onRecord.listen((record) {
     _consoleSink(record);
     _fileSink(record, dir);
   });

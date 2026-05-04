@@ -59,6 +59,16 @@ void main() {
       expect(child.level, Level.WARNING);
     });
 
+    test('calling initLogging twice does not duplicate output', () {
+      initLogging();
+      initLogging();
+      final records = <LogRecord>[];
+      final sub = Logger.root.onRecord.listen(records.add);
+      Logger('test').info('hello');
+      sub.cancel();
+      expect(records, hasLength(1));
+    });
+
     test('records are emitted to listeners', () async {
       initLogging();
       final records = <LogRecord>[];
