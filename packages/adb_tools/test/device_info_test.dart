@@ -165,5 +165,11 @@ void main() {
       final devices = await client.getDevicesWithInfo();
       expect(devices, isEmpty);
     });
+
+    test('test real get device list', () async {
+      final client = AdbClientImpl();
+      final devices = await client.getDevicesWithInfo();
+      expect(devices, isNotEmpty);
+    });
   });
 }
