@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:scrcpy_view/scrcpy_view.dart';
 
 class SafeAdbClient implements ScrcpyAdb {
-  SafeAdbClient({AdbClient? client}) : _client = client ?? const AdbClient();
+  SafeAdbClient({AdbClient? client}) : _client = client ?? const AdbClientImpl();
 
   final AdbClient _client;
 

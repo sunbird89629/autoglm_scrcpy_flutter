@@ -10,7 +10,7 @@ class AppController extends ChangeNotifier {
   factory AppController() => _instance;
 
   final scrcpyViewController = ScrcpyViewController(
-    adb: const ScrcpyAppAdb(AdbClientImpl()),
+    adb: ScrcpyAppAdb(AdbClientImpl()),
   );
 
   late final McpServerController mcpServerController = McpServerController(
