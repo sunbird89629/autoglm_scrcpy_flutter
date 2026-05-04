@@ -134,23 +134,25 @@ class ScrcpyMcpAdb implements ScrcpyAdb, RecordingAdb {
   }
 }
 
-/// Bridges MCP scrcpy logs to the shared application logger.
+/// Bridges MCP scrcpy logs to a module-level [Logger].
 class ScrcpyMcpLogger implements ScrcpyLogger {
+  static final _log = Logger('scrcpy.mcp');
+
   const ScrcpyMcpLogger();
 
   @override
-  void debug(String message) => appLogger.d(message);
+  void debug(String message) => _log.fine(message);
 
   @override
-  void info(String message) => appLogger.i(message);
+  void info(String message) => _log.info(message);
 
   @override
   void warn(String message, [Object? error, StackTrace? stack]) {
-    appLogger.w(message, error, stack);
+    _log.warning(message, error, stack);
   }
 
   @override
   void error(String message, [Object? error, StackTrace? stack]) {
-    appLogger.e(message, error, stack);
+    _log.severe(message, error, stack);
   }
 }

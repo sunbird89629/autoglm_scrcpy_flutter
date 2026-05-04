@@ -1,8 +1,10 @@
 import 'dart:io';
 
-import 'package:autoglm_logger/autoglm_logger.dart';
+import 'package:logging/logging.dart';
 
 import 'recording_adb.dart';
+
+final _log = Logger('scrcpy.recording');
 
 class RecordingController {
   RecordingController(this._adb);
@@ -46,7 +48,7 @@ class RecordingController {
     // Monitor for unexpected exit; no-op if stop() already ran first.
     process.exitCode.then((_) {
       if (isRecording) {
-        appLogger.w('screenrecord process exited unexpectedly on $deviceId');
+        _log.warning('screenrecord process exited unexpectedly on $deviceId');
         _reset();
       }
     });

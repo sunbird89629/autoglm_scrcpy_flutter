@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:autoglm_logger/autoglm_logger.dart';
+import 'package:autoglm_logger/autoglm_logger.dart'; // re-exports initLogging
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scrcpy_mcp/src/recording_adb.dart';
 import 'package:scrcpy_mcp/src/recording_controller.dart';
@@ -81,7 +81,7 @@ void main() {
 
     setUp(() {
       tempDir = Directory.systemTemp.createTempSync('recording_test');
-      initAppLogger(logsDir: tempDir.path);
+      initLogging(logsDir: tempDir.path);
       adb = _MockRecordingAdb();
       ctrl = RecordingController(adb);
     });
