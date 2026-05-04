@@ -6,7 +6,6 @@ environment:
 
 workspace:
   - autoglm_app
-  - packages/autoglm_core
   - packages/autoglm_logger
   - packages/autoglm_adb
   - scrcpy_app

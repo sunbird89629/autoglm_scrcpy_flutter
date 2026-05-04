@@ -1,4 +1,6 @@
-import 'package:autoglm_core/autoglm_core.dart';
+import '../src/history/history_database.dart';
+import '../src/history/history_manager.dart';
+import '../src/models/history.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';

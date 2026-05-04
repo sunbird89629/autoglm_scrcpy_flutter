@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:autoglm_core/src/settings.dart';
+import 'settings.dart';
 import 'package:autoglm_logger/autoglm_logger.dart';
 
 /// Repository for application settings.

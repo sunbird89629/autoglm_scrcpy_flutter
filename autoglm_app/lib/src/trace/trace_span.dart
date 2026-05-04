@@ -1,4 +1,4 @@
-import 'package:autoglm_core/src/trace/trace_manager.dart';
+import 'trace_manager.dart';
 
 /// Context-manager helper for recording a trace span.
 class TraceSpan {

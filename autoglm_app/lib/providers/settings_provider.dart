@@ -1,4 +1,5 @@
-import 'package:autoglm_core/autoglm_core.dart';
+import '../src/settings.dart';
+import '../src/settings_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Provider for the [SettingsRepository].

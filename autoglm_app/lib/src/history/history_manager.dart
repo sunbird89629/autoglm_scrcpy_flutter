@@ -1,5 +1,5 @@
-import 'package:autoglm_core/src/history/history_database.dart';
-import 'package:autoglm_core/src/models/history.dart';
+import 'history_database.dart';
+import '../models/history.dart';
 
 /// Manages conversation history records and persistence.
 class HistoryManager {

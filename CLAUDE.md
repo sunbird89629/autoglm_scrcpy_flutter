@@ -33,7 +33,6 @@ Add deps inside the target package (not at root), then `melos bootstrap` from ro
 ## Architecture
 
 ```
-packages/autoglm_logger ──> packages/autoglm_core
 packages/autoglm_adb ────────────────┐
 packages/autoglm_logger ─────────────┤
 scrcpy_view (widget/protocol package) ├──> scrcpy_app (scrcpy client)
@@ -60,13 +59,11 @@ Lower layers must never import from upper layers.
 
 **scrcpy_mcp** — MCP server wrapping scrcpy operations
 
-**autoglm_core** — `Settings`/`SettingsRepository`, `HistoryDatabase` (SQLite via sqflite_common_ffi), `TraceManager` (daily-rolling JSONL). Re-exports `autoglm_logger`.
-
 **autoglm_adb** — `AdbClient` (shell, forward, reverse, push, pair, connect), `AdbProcessRunner`.
 
 ## Conventions
 
-- Use `appLogger` from `package:autoglm_core` for all logging (never `print`)
+- Use `appLogger` from `package:autoglm_logger` for all logging (never `print`)
 - Use `ScrcpyAdb` interface from `scrcpy_view` for testing without a real device
 - Keep `scrcpy_view` independent from AutoGLM-specific packages; app/MCP entry points own their local adapters from `AdbClient`/`appLogger` to `ScrcpyAdb`/`ScrcpyLogger`
 - Asset paths in `rootBundle.load()` use `packages/<name>/assets/...` matching the pubspec `name:` field

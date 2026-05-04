@@ -1,4 +1,5 @@
-import 'package:autoglm_core/autoglm_core.dart';
+import 'package:autoglm_app/src/settings.dart';
+import 'package:autoglm_app/src/settings_repository.dart';
 import 'package:autoglm_app/providers/settings_provider.dart';
 import 'package:autoglm_app/providers/theme_mode_provider.dart';
 import 'package:flutter/material.dart';

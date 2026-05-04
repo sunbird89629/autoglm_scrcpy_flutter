@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:autoglm_core/autoglm_core.dart';
+import 'package:autoglm_logger/autoglm_logger.dart';
 import 'package:autoglm_app/providers/scrcpy_provider.dart';
 import 'package:scrcpy_view/scrcpy_view.dart';
 import 'package:autoglm_app/theme/design_tokens.dart';

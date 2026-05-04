@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:autoglm_core/autoglm_core.dart';
+import 'package:autoglm_logger/autoglm_logger.dart';
+import 'src/settings_repository.dart';
 import 'package:autoglm_app/app.dart';
 import 'package:autoglm_app/i18n/strings.g.dart';
 import 'package:autoglm_app/providers/settings_provider.dart';

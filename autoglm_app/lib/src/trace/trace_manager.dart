@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:autoglm_core/src/models/trace.dart';
+import '../models/trace.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
