@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:adb_tools/src/adb_process_runner.dart';
 import 'package:adb_tools/src/device_info.dart';
 import 'package:adb_tools/src/exceptions.dart';
+import 'package:flutter/rendering.dart';
 
 /// Abstract ADB client.
 ///
@@ -57,7 +58,6 @@ abstract class AdbClient {
   Future<String> connect(String ip, int port) => throw UnimplementedError();
 
   Future<List<String>> getDevices() => throw UnimplementedError();
-
 }
 
 /// Concrete ADB client implementation.
@@ -219,6 +219,24 @@ class AdbClientImpl extends AdbClient {
       androidVersion: props['ro.build.version.release'],
       sdkVersion: int.tryParse(props['ro.build.version.sdk'] ?? ''),
     );
+  }
+
+  Future<Rect> getDeviceScreenInfo(String serial) async {
+    try {
+      final result = await runner.run(adbPath, ['shell', 'wm', 'size']);
+      final stdout = result.stdout.toString();
+      final [double width, double height] = stdout
+          .trim()
+          .split(':')
+          .last
+          .trim()
+          .split('x')
+          .map<double>(double.parse)
+          .toList();
+      return Rect.fromLTWH(0, 0, width, height);
+    } catch (e) {
+      throw AdbException('get screen info error');
+    }
   }
 
   static Map<String, String> _parseGetprop(String output) {

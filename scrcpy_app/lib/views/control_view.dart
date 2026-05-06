@@ -12,7 +12,7 @@ class ControlView extends StatelessWidget {
   Widget build(BuildContext context) {
     final AppController appController = AppController();
     return SizedBox(
-      width: 300,
+      width: 400,
       child: ListenableBuilder(
         listenable: appController.mcpServerController,
         builder: (_, __) {

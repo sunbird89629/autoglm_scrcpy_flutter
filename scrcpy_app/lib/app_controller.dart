@@ -4,27 +4,14 @@ import 'package:scrcpy_app/mcp_server_controller.dart';
 import 'package:scrcpy_app/scrcpy_app_adb.dart';
 import 'package:scrcpy_view/scrcpy_view.dart';
 
-class ConsoleScrcpyLogger implements ScrcpyLogger {
-  const ConsoleScrcpyLogger();
-  @override
-  void debug(String message) => print('DEBUG: $message');
-  @override
-  void info(String message) => print('INFO: $message');
-  @override
-  void warn(String message, [Object? error, StackTrace? stack]) =>
-      print('WARN: $message $error');
-  @override
-  void error(String message, [Object? error, StackTrace? stack]) =>
-      print('ERROR: $message $error');
-}
-
 class AppController extends ChangeNotifier {
   AppController._();
   static final _instance = AppController._();
   factory AppController() => _instance;
+  static const _adbClient = AdbClientImpl();
 
   final scrcpyViewController = ScrcpyViewController(
-    adb: ScrcpyAppAdb(const AdbClientImpl()),
+    adb: ScrcpyAppAdb(AdbClientImpl()),
   );
 
   late final McpServerController mcpServerController = McpServerController(
@@ -39,13 +26,22 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  DeviceInfo? _deviceInfo;
+
+  DeviceInfo? get deviceInfo => _deviceInfo;
+  set deviceInfo(DeviceInfo? value) {
+    _deviceInfo = value;
+    notifyListeners();
+  }
+
   void injectKey(int keycode) {
     scrcpyViewController.injectKey(keycode);
   }
 
   Future<void> connectDevice(final String deviceId) async {
-    await scrcpyViewController.start(deviceId, onStarted: () {
+    await scrcpyViewController.start(deviceId, onStarted: () async {
       running = true;
+      deviceInfo = await _adbClient.getDeviceInfo(deviceId);
     });
   }
 }

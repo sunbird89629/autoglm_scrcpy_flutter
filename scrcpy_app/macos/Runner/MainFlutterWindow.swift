@@ -12,8 +12,9 @@ class MainFlutterWindow: NSWindow {
     self.titlebarAppearsTransparent = true
     self.titleVisibility = .hidden
     self.styleMask.insert(.fullSizeContentView)
-    self.styleMask.remove(.titled)
     self.isMovableByWindowBackground = true
+
+    setWindowButtonsHidden(true)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
 
@@ -29,11 +30,17 @@ class MainFlutterWindow: NSWindow {
     contentView.addTrackingArea(trackingArea!)
   }
 
+  private func setWindowButtonsHidden(_ hidden: Bool) {
+    [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].forEach {
+      self.standardWindowButton($0)?.isHidden = hidden
+    }
+  }
+
   override func mouseEntered(with event: NSEvent) {
-    self.styleMask.insert(.titled)
+    setWindowButtonsHidden(false)
   }
 
   override func mouseExited(with event: NSEvent) {
-    self.styleMask.remove(.titled)
+    setWindowButtonsHidden(true)
   }
 }
