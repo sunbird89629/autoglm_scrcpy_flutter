@@ -30,12 +30,10 @@ class ScrcpyViewController extends ChangeNotifier implements ScrcpySession {
   /// Creates a controller backed by an injected ADB bridge.
   ScrcpyViewController({
     required ScrcpyAdb adb,
-    ScrcpyLogger logger = const NoOpScrcpyLogger(),
-  })  : _adb = adb,
-        _logger = logger;
+  }) : _adb = adb;
 
   final ScrcpyAdb _adb;
-  final ScrcpyLogger _logger;
+  // final ScrcpyLogger _logger;
 
   ScrcpyServer? _server;
   bool _running = false;
@@ -96,7 +94,6 @@ class ScrcpyViewController extends ChangeNotifier implements ScrcpySession {
     final server = ScrcpyServer(
       adb: _adb,
       deviceId: deviceId,
-      logger: logger ?? _logger,
     );
     try {
       await server.start();

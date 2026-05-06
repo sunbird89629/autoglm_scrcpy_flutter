@@ -25,7 +25,6 @@ class AppController extends ChangeNotifier {
 
   final scrcpyViewController = ScrcpyViewController(
     adb: ScrcpyAppAdb(const AdbClientImpl()),
-    logger: const ConsoleScrcpyLogger(),
   );
 
   late final McpServerController mcpServerController = McpServerController(
