@@ -1,0 +1,73 @@
+<h2>AI-First App Icon Sketches</h2>
+<p class="subtitle">Exploring minimalist designs for a modern, intelligent scrcpy client.</p>
+
+<div class="cards">
+  <!-- Option D: Intelligent Lens -->
+  <div class="card" data-choice="lens" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: #f0f4f8; padding: 20px; display: flex; justify-content: center; align-items: center;">
+      <div style="width: 120px; height: 120px; background: linear-gradient(135deg, #3F51B5, #1A237E); border-radius: 28px; position: relative; overflow: hidden; box-shadow: 0 10px 20px rgba(0,0,0,0.2);">
+        <!-- Phone Frame -->
+        <div style="position: absolute; top: 15px; left: 25px; right: 25px; bottom: 15px; border: 3px solid rgba(255,255,255,0.3); border-radius: 12px;"></div>
+        <!-- Scanning Line -->
+        <div style="position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: #00BCD4; box-shadow: 0 0 10px #00BCD4; animation: scan 2s infinite ease-in-out;"></div>
+        <!-- Lens Dot -->
+        <div style="position: absolute; top: 50%; left: 50%; width: 12px; height: 12px; background: #fff; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 15px #00BCD4;"></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>方案 D：智能透镜 (Intelligent Lens)</h3>
+      <p>核心视觉是一个带扫描线的屏幕，象征 AI 正在感知和理解屏幕内容。最具科技感和 AI 属性。</p>
+    </div>
+  </div>
+
+  <!-- Option E: Neural Screen -->
+  <div class="card" data-choice="neural" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: #f0f4f8; padding: 20px; display: flex; justify-content: center; align-items: center;">
+      <div style="width: 120px; height: 120px; background: #3F51B5; border-radius: 28px; position: relative; box-shadow: 0 10px 20px rgba(0,0,0,0.2);">
+        <!-- Screen Frame -->
+        <div style="position: absolute; top: 20px; left: 20px; right: 20px; bottom: 20px; border: 2px solid rgba(255,255,255,0.6); border-radius: 10px;"></div>
+        <!-- Neural Nodes -->
+        <div style="position: absolute; top: 30px; left: 30px; width: 8px; height: 8px; background: #fff; border-radius: 50%;"></div>
+        <div style="position: absolute; top: 45px; left: 60px; width: 8px; height: 8px; background: #fff; border-radius: 50%;"></div>
+        <div style="position: absolute; top: 70px; left: 40px; width: 8px; height: 8px; background: #fff; border-radius: 50%;"></div>
+        <!-- Connections -->
+        <svg style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+          <line x1="34" y1="34" x2="64" y2="49" stroke="white" stroke-width="1.5" />
+          <line x1="64" y1="49" x2="44" y2="74" stroke="white" stroke-width="1.5" />
+          <line x1="44" y1="74" x2="34" y2="34" stroke="white" stroke-width="1.5" />
+        </svg>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>方案 E：神经节点 (Neural Screen)</h3>
+      <p>将屏幕角落设计为互联的节点，强调镜像背后的智能网络连接。极简且富有逻辑感。</p>
+    </div>
+  </div>
+
+  <!-- Option F: Spark Cursor -->
+  <div class="card" data-choice="spark" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: #f0f4f8; padding: 20px; display: flex; justify-content: center; align-items: center;">
+      <div style="width: 120px; height: 120px; background: linear-gradient(135deg, #5C6BC0, #3F51B5); border-radius: 28px; position: relative; box-shadow: 0 10px 20px rgba(0,0,0,0.2);">
+        <!-- Spark Icon (4-pointed star) -->
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff;">
+          <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" fill="white" />
+            <path d="M12 7L13 11L17 12L13 13L12 17L11 13L7 12L11 11L12 7Z" fill="#00BCD4" />
+          </svg>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>方案 F：智能指针 (Spark Cursor)</h3>
+      <p>核心是一个四角星（Spark），既代表 AI 也暗示了光标操作。设计语言与 Google Gemini 等主流 AI 标识统一。</p>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes scan {
+  0% { transform: translateY(-30px); opacity: 0; }
+  50% { opacity: 1; }
+  100% { transform: translateY(30px); opacity: 0; }
+}
+</style>

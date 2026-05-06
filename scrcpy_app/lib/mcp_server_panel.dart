@@ -45,7 +45,7 @@ class _McpServerPanelState extends State<McpServerPanel> {
       children: [
         Row(
           children: [
-            const Text('MCP'),
+            const Text('MCP Server'),
             const SizedBox(width: 12),
             const Text('Port:'),
             const SizedBox(width: 8),
