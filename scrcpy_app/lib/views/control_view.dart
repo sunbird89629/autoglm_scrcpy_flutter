@@ -11,8 +11,7 @@ class ControlView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppController appController = AppController();
-    return SizedBox(
-      width: 400,
+    return Expanded(
       child: ListenableBuilder(
         listenable: appController.mcpServerController,
         builder: (_, __) {

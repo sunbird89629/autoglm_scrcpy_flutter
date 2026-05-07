@@ -1,10 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:scrcpy_app/app_controller.dart';
 import 'package:scrcpy_app/views/control_view.dart';
-import 'package:scrcpy_app/views/device_control_view.dart';
-import 'package:scrcpy_view/scrcpy_view.dart';
+import 'package:scrcpy_app/views/phone_view.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -66,24 +64,13 @@ class _HomePageState extends State<HomePage> with TrayListener {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: _buildBody());
-  }
-
-  Widget _buildBody() {
-    final appController = AppController();
-    return ListenableBuilder(
-      listenable: appController,
-      builder: (context, child) {
-        final mainContent = appController.running
-            ? ScrcpyView(controller: appController.scrcpyViewController)
-            : DeviceControlView();
-        return Row(
-          children: [
-            Expanded(child: mainContent),
-            ControlView(),
-          ],
-        );
-      },
+    return Scaffold(
+      body: Row(
+        children: const [
+          PhoneView(),
+          ControlView(),
+        ],
+      ),
     );
   }
 }

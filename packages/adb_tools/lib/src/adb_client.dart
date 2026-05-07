@@ -206,11 +206,15 @@ class AdbClientImpl extends AdbClient {
   }
 
   Future<DeviceInfo> getDeviceInfo(String serial) async {
-    final propResult = await runner.run(
-      adbPath,
-      ['-s', serial, 'shell', 'getprop'],
-    );
-    final props = _parseGetprop(propResult.stdout.toString());
+    final results = await Future.wait([
+      runner.run(adbPath, ['-s', serial, 'shell', 'getprop']),
+      runner.run(adbPath, ['-s', serial, 'shell', 'wm', 'size']),
+    ]);
+    final props = _parseGetprop(results[0].stdout.toString());
+    final sizeOut = results[1].stdout.toString();
+    final sizeMatch = RegExp(r'(\d+)x(\d+)').firstMatch(sizeOut);
+    final sw = sizeMatch != null ? double.parse(sizeMatch.group(1)!) : 0.0;
+    final sh = sizeMatch != null ? double.parse(sizeMatch.group(2)!) : 0.0;
     return DeviceInfo(
       serial: serial,
       status: DeviceStatus.online,
@@ -218,12 +222,17 @@ class AdbClientImpl extends AdbClient {
       manufacturer: props['ro.product.manufacturer'],
       androidVersion: props['ro.build.version.release'],
       sdkVersion: int.tryParse(props['ro.build.version.sdk'] ?? ''),
+      screenWidth: sw,
+      screenHeight: sh,
     );
   }
 
-  Future<Rect> getDeviceScreenInfo(String serial) async {
+  Future<Size> getDeviceScreenInfo(String serial) async {
     try {
-      final result = await runner.run(adbPath, ['shell', 'wm', 'size']);
+      final result = await runner.run(
+        adbPath,
+        [..._baseArgs(serial), 'shell', 'wm', 'size'],
+      );
       final stdout = result.stdout.toString();
       final [double width, double height] = stdout
           .trim()
@@ -233,7 +242,7 @@ class AdbClientImpl extends AdbClient {
           .split('x')
           .map<double>(double.parse)
           .toList();
-      return Rect.fromLTWH(0, 0, width, height);
+      return Size(width, height);
     } catch (e) {
       throw AdbException('get screen info error');
     }

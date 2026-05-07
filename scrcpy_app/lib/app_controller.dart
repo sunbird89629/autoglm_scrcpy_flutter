@@ -11,17 +11,18 @@ class AppController extends ChangeNotifier {
   static const _adbClient = AdbClientImpl();
 
   final scrcpyViewController = ScrcpyViewController(
-    adb: ScrcpyAppAdb(AdbClientImpl()),
+    adb: ScrcpyAppAdb(_adbClient),
   );
 
   late final McpServerController mcpServerController = McpServerController(
     session: scrcpyViewController,
-    adb: const ScrcpyAppAdb(AdbClientImpl()),
+    adb: ScrcpyAppAdb(_adbClient),
   );
 
   bool _running = false;
   bool get running => _running;
   set running(bool value) {
+    if (_running == value) return;
     _running = value;
     notifyListeners();
   }
@@ -30,6 +31,7 @@ class AppController extends ChangeNotifier {
 
   DeviceInfo? get deviceInfo => _deviceInfo;
   set deviceInfo(DeviceInfo? value) {
+    if (_deviceInfo == value) return;
     _deviceInfo = value;
     notifyListeners();
   }
@@ -38,10 +40,10 @@ class AppController extends ChangeNotifier {
     scrcpyViewController.injectKey(keycode);
   }
 
-  Future<void> connectDevice(final String deviceId) async {
-    await scrcpyViewController.start(deviceId, onStarted: () async {
+  Future<void> connectDevice(final String serial) async {
+    await scrcpyViewController.start(serial, onStarted: () async {
       running = true;
-      deviceInfo = await _adbClient.getDeviceInfo(deviceId);
+      deviceInfo = await _adbClient.getDeviceInfo(serial);
     });
   }
 }
