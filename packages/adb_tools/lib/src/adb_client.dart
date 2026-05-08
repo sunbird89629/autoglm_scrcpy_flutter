@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:adb_tools/src/adb_process_runner.dart';
 import 'package:adb_tools/src/device_info.dart';
 import 'package:adb_tools/src/exceptions.dart';
-import 'package:flutter/rendering.dart';
 
 /// Abstract ADB client.
 ///
@@ -227,7 +226,7 @@ class AdbClientImpl extends AdbClient {
     );
   }
 
-  Future<Size> getDeviceScreenInfo(String serial) async {
+  Future<(double, double)> getDeviceScreenInfo(String serial) async {
     try {
       final result = await runner.run(
         adbPath,
@@ -242,7 +241,7 @@ class AdbClientImpl extends AdbClient {
           .split('x')
           .map<double>(double.parse)
           .toList();
-      return Size(width, height);
+      return (width, height);
     } catch (e) {
       throw AdbException('get screen info error');
     }

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:adb_tools/src/adb_client.dart';
 import 'package:adb_tools/src/adb_process_runner.dart';
 import 'package:adb_tools/src/exceptions.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 
 class FakeRunner extends AdbProcessRunner {
   const FakeRunner(

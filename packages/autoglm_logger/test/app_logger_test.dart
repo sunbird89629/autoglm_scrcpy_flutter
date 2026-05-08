@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:autoglm_logger/autoglm_logger.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('initLogging', () {

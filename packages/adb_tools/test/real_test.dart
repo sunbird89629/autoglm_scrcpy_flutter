@@ -1,6 +1,6 @@
 import 'package:adb_tools/adb_tools.dart';
 import 'package:autoglm_logger/app_logger.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 
 void main() {
   initLogging();

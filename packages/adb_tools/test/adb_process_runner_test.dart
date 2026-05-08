@@ -1,6 +1,6 @@
 import 'package:adb_tools/src/adb_process_runner.dart';
 import 'package:adb_tools/src/exceptions.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('AdbProcessRunnerImpl', () {

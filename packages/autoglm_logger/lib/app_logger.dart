@@ -6,24 +6,27 @@ library;
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
+import 'package:path/path.dart';
 import 'package:path/path.dart';
 
 StreamSubscription<LogRecord>? _subscription;
+
+/// True in debug mode, false in release.
+const _debugMode = bool.fromEnvironment('dart.vm.product') == false;
 
 /// Configures the root logger with console and optional file output.
 ///
 /// Safe to call multiple times — subsequent calls reconfigure.
 ///
-/// - In debug mode ([kDebugMode]), root level is [Level.FINE].
+/// - In debug mode, root level is [Level.FINE].
 /// - In release mode, root level is [Level.INFO].
 /// - When [logsDir] is provided, logs are written to daily-rotated files
 ///   named `autoglm-YYYY-MM-DD.log`. Old files are pruned to the 5 most
 ///   recent by modification time.
 void initLogging({String? logsDir}) {
   hierarchicalLoggingEnabled = true;
-  Logger.root.level = kDebugMode ? Level.FINE : Level.INFO;
+  Logger.root.level = _debugMode ? Level.FINE : Level.INFO;
 
   final dir = logsDir != null ? Directory(logsDir) : null;
   if (dir != null && !dir.existsSync()) {
