@@ -18,7 +18,7 @@ class ControlButtonWidget extends StatelessWidget {
     final controller = AppController();
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF111111),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(100),
       ),
       width: 300,

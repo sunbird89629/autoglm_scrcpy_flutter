@@ -21,9 +21,8 @@ class FloatingControlButton extends StatelessWidget {
         child: Material(
           // 关键 1：StadiumBorder 自动根据高度计算出完美的半圆弧度
           shape: const StadiumBorder(),
-
           // 关键 2：M3 规范通常使用 Surface 或 SecondaryContainer 颜色
-          color: Theme.of(context).colorScheme.secondaryContainer,
+          color: Theme.of(context).colorScheme.primary,
           elevation: 4, // 增加一点悬浮感
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

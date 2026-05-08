@@ -12,7 +12,7 @@ class ScrcpyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.light,
+      themeMode: ThemeMode.dark,
       home: const HomePage(),
     );
   }

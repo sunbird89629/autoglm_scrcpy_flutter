@@ -79,10 +79,8 @@ class _McpServerPanelState extends State<McpServerPanel> {
           const SizedBox(height: 4),
           Text(
             ctrl.errorMessage!,
-            style: TextStyle(
-              color: theme.colorScheme.error,
-              fontSize: 12,
-            ),
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: theme.colorScheme.error),
           ),
         ],
       ],

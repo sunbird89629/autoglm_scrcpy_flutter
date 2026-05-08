@@ -12,11 +12,12 @@ class ControlButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return IconButton(
-      icon: Icon(icon, color: Colors.white),
+      icon: Icon(icon, color: cs.onSurface),
       onPressed: onPressed,
       style: IconButton.styleFrom(
-        backgroundColor: Colors.white10,
+        backgroundColor: cs.surfaceContainerHighest,
         padding: const EdgeInsets.all(12),
       ),
     );
