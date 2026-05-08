@@ -372,4 +372,77 @@ void main() {
       expect(_text(result), contains('Already recording'));
     }, timeout: const Timeout(Duration(seconds: 30)));
   });
+
+  // ── inject controls (e2e with real scrcpy) ────────────────────────────────
+
+  group('real device — inject controls (e2e)', () {
+    late ScrcpySessionImpl e2eSession;
+    late _E2eEnv e2eEnv;
+    late (int, int) screenSize;
+
+    setUpAll(() async {
+      if (realDevices.isEmpty) return;
+      final deviceId = realDevices.first;
+      e2eSession = await ScrcpySessionImpl.create(adb: adb);
+      e2eEnv = _E2eEnv(adb: adb, session: e2eSession);
+      await e2eEnv.connect();
+      await e2eEnv.client.callTool(
+        CallToolRequest(
+          name: 'start_mirroring',
+          arguments: {'device_id': deviceId},
+        ),
+      );
+      screenSize = await _getScreenSize(adb, deviceId);
+    });
+
+    tearDownAll(() async {
+      if (realDevices.isEmpty) return;
+      try {
+        await e2eEnv.client.callTool(
+          const CallToolRequest(name: 'stop_mirroring'),
+        );
+      } catch (_) {
+        // Transport may already be closed; ignore cleanup errors.
+      }
+    });
+
+    test('inject_scroll changes screen content', () async {
+      if (realDevices.isEmpty) {
+        markTestSkipped('No Android device connected via ADB');
+        return;
+      }
+      final (w, h) = screenSize;
+
+      final before = _screenshotBytes(await e2eEnv.client.callTool(
+        const CallToolRequest(name: 'take_screenshot'),
+      ));
+
+      final scrollResult = await e2eEnv.client.callTool(
+        CallToolRequest(
+          name: 'inject_scroll',
+          arguments: {
+            'x': w ~/ 2,
+            'y': h ~/ 2,
+            'width': w,
+            'height': h,
+            'hScroll': 0,
+            'vScroll': -3,
+          },
+        ),
+      );
+      expect(scrollResult.isError, isFalse, reason: _text(scrollResult));
+
+      await Future<void>.delayed(const Duration(milliseconds: 800));
+
+      final after = _screenshotBytes(await e2eEnv.client.callTool(
+        const CallToolRequest(name: 'take_screenshot'),
+      ));
+
+      expect(
+        _hasScreenChanged(before, after),
+        isTrue,
+        reason: 'Screen should change after scrolling',
+      );
+    }, timeout: const Timeout(Duration(seconds: 60)));
+  });
 }
