@@ -522,5 +522,23 @@ void main() {
       ));
       printOnFailure('inject_touch screenshot size: ${after.length} bytes');
     }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('inject_text succeeds', () async {
+      if (realDevices.isEmpty) {
+        markTestSkipped('No Android device connected via ADB');
+        return;
+      }
+
+      // Weak assertion: inject_text requires a focused input field to produce
+      // visible output. Without a forced screen state, only success is checked.
+      // To add pixel verification: first inject_touch on a text field, then call.
+      final textResult = await e2eEnv.client.callTool(
+        const CallToolRequest(
+          name: 'inject_text',
+          arguments: {'text': 'hello'},
+        ),
+      );
+      expect(textResult.isError, isFalse, reason: _text(textResult));
+    }, timeout: const Timeout(Duration(seconds: 60)));
   });
 }
