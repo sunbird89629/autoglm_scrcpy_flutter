@@ -332,8 +332,7 @@ void main() {
       await env.client.callTool(const CallToolRequest(name: 'start_recording'));
 
       // Record for a short moment so the file is non-empty
-      // ignore: inference_failure_on_instance_creation
-      await Future.delayed(const Duration(seconds: 3));
+      await Future<void>.delayed(const Duration(seconds: 3));
 
       final stopResult = await env.client.callTool(
         const CallToolRequest(name: 'stop_recording'),
