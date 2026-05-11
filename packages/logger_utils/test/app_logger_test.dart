@@ -53,8 +53,8 @@ void main() {
 
     test('Logger hierarchy works - child inherits parent level', () {
       initLogging();
-      Logger('autoglm.adb').level = Level.WARNING;
-      final child = Logger('autoglm.adb.client');
+      Logger('scrcpy.adb').level = Level.WARNING;
+      final child = Logger('scrcpy.adb.client');
       // Child should inherit WARNING from parent
       expect(child.level, Level.WARNING);
     });

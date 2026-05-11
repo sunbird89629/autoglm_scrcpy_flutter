@@ -4,11 +4,6 @@ import 'package:scrcpy_app/widgets/control_button.dart';
 import 'package:scrcpy_view/scrcpy_view.dart';
 
 class FloatingControlButton extends StatelessWidget {
-  static const _navButtons = [
-    (Icons.arrow_back, ScrcpyKeycode.back),
-    (Icons.circle_outlined, ScrcpyKeycode.home),
-    (Icons.menu, ScrcpyKeycode.appSwitch),
-  ];
   const FloatingControlButton({
     super.key,
   });
@@ -29,7 +24,7 @@ class FloatingControlButton extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min, // 宽度自适应内容
               spacing: 24,
-              children: _navButtons
+              children: defaultNavButtons
                   .map((b) => ControlButton(
                         icon: b.$1,
                         onPressed: () => controller.injectKey(b.$2),

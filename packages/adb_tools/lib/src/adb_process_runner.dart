@@ -20,7 +20,7 @@ abstract class AdbProcessRunner {
 
 /// Default implementation using [Process.run].
 class AdbProcessRunnerImpl extends AdbProcessRunner {
-  static final _log = Logger('autoglm.adb.AdbProcessRunner');
+  static final _log = Logger('scrcpy.adb.AdbProcessRunner');
   const AdbProcessRunnerImpl();
 
   @override

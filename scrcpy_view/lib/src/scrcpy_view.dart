@@ -56,7 +56,6 @@ class _ScrcpyViewState extends State<ScrcpyView> {
       listenable: widget.controller,
       builder: (context, _) {
         final server = widget.controller.server;
-        debugPrint('ScrcpyView.playerUrl:${server?.playerUrl}');
         if (server == null) {
           return const Center(child: Text('点击 Start 启动服务'));
         }

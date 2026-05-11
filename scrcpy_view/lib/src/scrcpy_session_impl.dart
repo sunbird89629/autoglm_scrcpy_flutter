@@ -83,7 +83,7 @@ class ScrcpySessionImpl implements ScrcpySession {
       _server = server;
       _pending = false;
       onStarted?.call();
-    } catch (e) {
+    } on Exception catch (e) {
       onError?.call(e.toString());
       rethrow;
     } finally {
@@ -141,7 +141,7 @@ class ScrcpySessionImpl implements ScrcpySession {
     if (assetsPath != null) {
       final dir = Directory(assetsPath);
       serverJar = await File(
-        p.join(dir.path, 'scrcpy-server-v3.3.4'),
+        p.join(dir.path, 'scrcpy-server-v${ScrcpyServer.serverVersion}'),
       ).readAsBytes();
       webPlayer = await File(
         p.join(dir.path, 'web_player', 'index.html'),
@@ -158,7 +158,7 @@ class ScrcpySessionImpl implements ScrcpySession {
       }
       final packageRoot = libUri.resolve('../');
       serverJar = await File.fromUri(
-        packageRoot.resolve('assets/scrcpy-server-v3.3.4'),
+        packageRoot.resolve('assets/scrcpy-server-v${ScrcpyServer.serverVersion}'),
       ).readAsBytes();
       webPlayer = await File.fromUri(
         packageRoot.resolve('assets/web_player/index.html'),

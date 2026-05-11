@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:adb_tools/src/adb_process_runner.dart';
 import 'package:adb_tools/src/device_info.dart';
@@ -138,6 +139,20 @@ class AdbClient {
         .toList();
   }
 
+  Future<Uint8List> takeScreenshot(String deviceId) async {
+    final result = await Process.run(
+      adbPath,
+      ['-s', deviceId, 'exec-out', 'screencap', '-p'],
+      stdoutEncoding: null,
+    );
+    if (result.exitCode != 0) {
+      throw AdbException(
+        'screencap failed (exit ${result.exitCode}): ${result.stderr}',
+      );
+    }
+    return Uint8List.fromList(result.stdout as List<int>);
+  }
+
   Future<DeviceInfo> getDeviceInfo(String serial) async {
     final results = await Future.wait([
       runner.run(adbPath, ['-s', serial, 'shell', 'getprop']),
@@ -177,7 +192,7 @@ class AdbClient {
           .toList();
       return (width, height);
     } catch (e) {
-      throw AdbException('get screen info error');
+      throw AdbException('get screen info error: $e');
     }
   }
 

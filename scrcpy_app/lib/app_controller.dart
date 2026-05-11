@@ -1,7 +1,7 @@
 import 'package:adb_tools/adb_tools.dart';
 import 'package:flutter/material.dart';
 import 'package:scrcpy_app/mcp_server_controller.dart';
-import 'package:scrcpy_app/scrcpy_app_adb.dart';
+import 'package:scrcpy_mcp/scrcpy_mcp.dart';
 import 'package:scrcpy_view/scrcpy_view.dart';
 
 class AppController extends ChangeNotifier {
@@ -9,14 +9,15 @@ class AppController extends ChangeNotifier {
   static final _instance = AppController._();
   factory AppController() => _instance;
   static const _adbClient = AdbClient();
+  static const _scrcpyAdb = ScrcpyAdbAdapter(_adbClient);
 
   final scrcpyViewController = ScrcpyViewController(
-    adb: ScrcpyAppAdb(_adbClient),
+    adb: _scrcpyAdb,
   );
 
   late final McpServerController mcpServerController = McpServerController(
     session: scrcpyViewController,
-    adb: ScrcpyAppAdb(_adbClient),
+    adb: _scrcpyAdb,
   );
 
   bool _running = false;

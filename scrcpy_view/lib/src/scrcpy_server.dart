@@ -14,6 +14,8 @@ import 'package:scrcpy_view/src/scrcpy_websocket_server.dart';
 
 /// Manages a scrcpy server instance on a device.
 class ScrcpyServer {
+  /// The scrcpy server version bundled with this package.
+  static const serverVersion = '3.3.4';
   ScrcpyServer({
     required this.adb,
     required this.deviceId,
@@ -125,14 +127,14 @@ class ScrcpyServer {
       final indexFile = File(p.join(webDir.path, 'index.html'));
       await indexFile.writeAsBytes(_webPlayerBytes, flush: true);
       return webDir.path;
-    } catch (e) {
+    } on Exception catch (e) {
       _log.error('[ScrcpyServer] Failed to prepare web player', e);
       rethrow;
     }
   }
 
   Future<void> _pushServer() async {
-    const version = '3.3.4';
+    const version = serverVersion;
     const remotePath = '/data/local/tmp/scrcpy-server-v$version.jar';
 
     try {
@@ -148,7 +150,7 @@ class ScrcpyServer {
       await adb.push(localTempFile.path, remotePath, deviceId: deviceId);
 
       await localTempFile.delete();
-    } catch (e, st) {
+    } on Exception catch (e, st) {
       _log.error('[ScrcpyServer] Failed to prepare server on device', e, st);
       rethrow;
     }
@@ -176,7 +178,7 @@ class ScrcpyServer {
         );
         _actualPort = currentPort;
         return;
-      } catch (e) {
+      } on Exception catch (e) {
         _log.warn(
           '[ScrcpyServer] Failed to forward on port $currentPort, retrying...',
           e,
@@ -190,7 +192,7 @@ class ScrcpyServer {
   }
 
   Future<void> _runServer(String scidHex) async {
-    const version = '3.3.4';
+    const version = serverVersion;
     const remotePath = '/data/local/tmp/scrcpy-server-v$version.jar';
 
     // pkill exits non-zero when no process matched — ignore it

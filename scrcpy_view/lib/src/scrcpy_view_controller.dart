@@ -43,9 +43,9 @@ class ScrcpyViewController extends ChangeNotifier implements ScrcpySession {
   ScrcpySessionImpl? _impl;
 
   /// Touch event forwarder passed to the video backend.
-  late final ScrcpyTouchController touchController = ScrcpyTouchController(
-    (msg) => _impl?.sendControlMessage(msg),
-  );
+  // ignore: prefer_function_declarations_over_variables
+  late final ScrcpyTouchCallback touchController =
+      (msg) => _impl?.sendControlMessage(msg);
 
   /// Returns the current ADB device serials from the injected ADB bridge.
   Future<List<String>> getDevices() =>
@@ -98,7 +98,7 @@ class ScrcpyViewController extends ChangeNotifier implements ScrcpySession {
     notifyListeners();
 
     try {
-      const version = '3.3.4';
+      const version = ScrcpyServer.serverVersion;
       final serverJarData = await rootBundle.load(
         'packages/scrcpy_view/assets/scrcpy-server-v$version',
       );

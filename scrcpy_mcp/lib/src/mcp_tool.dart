@@ -2,7 +2,7 @@ import 'package:logger_utils/logger_utils.dart';
 import 'package:mcp_dart/mcp_dart.dart' hide Logger;
 import 'package:scrcpy_view/scrcpy_core.dart';
 
-final _logger = Logger('mcp');
+final _logger = Logger('scrcpy.mcp');
 
 /// Base contract for all MCP tool implementations.
 ///

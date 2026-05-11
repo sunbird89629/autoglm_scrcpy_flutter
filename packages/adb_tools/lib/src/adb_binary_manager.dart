@@ -8,7 +8,7 @@ import 'package:path/path.dart' as p;
 
 /// Manages the ADB binary lifecycle, including auto-downloading.
 class AdbBinaryManager {
-  static final _log = Logger('autoglm.adb.AdbBinaryManager');
+  static final _log = Logger('scrcpy.adb.AdbBinaryManager');
 
   /// Creates a new [AdbBinaryManager].
   AdbBinaryManager({required this.binDir, Dio? dio}) : _dio = dio ?? Dio();

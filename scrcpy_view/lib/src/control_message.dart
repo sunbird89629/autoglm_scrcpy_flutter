@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/material.dart';
+
 /// Base class for all scrcpy control messages.
 abstract class ScrcpyControlMessage {
   const ScrcpyControlMessage();
@@ -33,6 +35,13 @@ class ScrcpyKeycode {
   /// `KEYCODE_APP_SWITCH` — open the recent-apps overview.
   static const int appSwitch = 187;
 }
+
+/// Default navigation buttons: Back, Home, App Switch.
+const defaultNavButtons = [
+  (Icons.arrow_back, ScrcpyKeycode.back),
+  (Icons.circle_outlined, ScrcpyKeycode.home),
+  (Icons.menu, ScrcpyKeycode.appSwitch),
+];
 
 /// Type 0: Inject Keycode
 class ScrcpyInjectKeyMessage extends ScrcpyControlMessage {
