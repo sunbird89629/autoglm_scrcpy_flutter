@@ -8,7 +8,7 @@ class AppController extends ChangeNotifier {
   AppController._();
   static final _instance = AppController._();
   factory AppController() => _instance;
-  static const _adbClient = AdbClientImpl();
+  static const _adbClient = AdbClient();
 
   final scrcpyViewController = ScrcpyViewController(
     adb: ScrcpyAppAdb(_adbClient),

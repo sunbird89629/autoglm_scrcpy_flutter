@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 
 void main() {
   initLogging();
-  final client = AdbClientImpl();
+  final client = AdbClient();
 
   late String firstDevice;
 

@@ -25,7 +25,7 @@ void main() {
   initLogging();
 
   setUpAll(() async {
-    adb = ScrcpyMcpAdb(AdbClientImpl());
+    adb = ScrcpyMcpAdb(AdbClient());
     realDevices = await adb.getDevices();
   });
 

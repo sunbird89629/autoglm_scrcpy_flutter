@@ -4,82 +4,24 @@ import 'package:adb_tools/src/adb_process_runner.dart';
 import 'package:adb_tools/src/device_info.dart';
 import 'package:adb_tools/src/exceptions.dart';
 
-/// Abstract ADB client.
-///
-/// All methods default to [UnimplementedError] so partial test fakes can
-/// extend this class and only override the methods they exercise.
-abstract class AdbClient {
-  const AdbClient();
-
-  String get adbPath => 'adb';
-
-  Future<String> getVersion() => throw UnimplementedError();
-
-  Future<ProcessResult> shell(
-    List<String> arguments, {
-    String? deviceId,
-    Duration timeout = const Duration(seconds: 30),
-  }) =>
-      throw UnimplementedError();
-
-  Future<void> forward(
-    String local,
-    String remote, {
-    String? deviceId,
-    bool noRebind = false,
-  }) =>
-      throw UnimplementedError();
-
-  Future<void> forwardRemove(String local, {String? deviceId}) =>
-      throw UnimplementedError();
-
-  Future<void> reverse(
-    String remote,
-    String local, {
-    String? deviceId,
-    bool noRebind = false,
-  }) =>
-      throw UnimplementedError();
-
-  Future<void> reverseRemove(String remote, {String? deviceId}) =>
-      throw UnimplementedError();
-
-  Future<void> push(
-    String localPath,
-    String remotePath, {
-    String? deviceId,
-  }) =>
-      throw UnimplementedError();
-
-  Future<String> pair(String ip, int port, String code) =>
-      throw UnimplementedError();
-
-  Future<String> connect(String ip, int port) => throw UnimplementedError();
-
-  Future<List<String>> getDevices() => throw UnimplementedError();
-}
-
-/// Concrete ADB client implementation.
-class AdbClientImpl extends AdbClient {
-  const AdbClientImpl({
+/// ADB client.
+class AdbClient {
+  const AdbClient({
     this.adbPath = 'adb',
     this.runner = const AdbProcessRunnerImpl(),
   });
 
-  @override
   final String adbPath;
   final AdbProcessRunner runner;
 
   List<String> _baseArgs(String? deviceId) =>
       deviceId != null ? ['-s', deviceId] : const [];
 
-  @override
   Future<String> getVersion() async {
     final result = await runner.run(adbPath, ['version']);
     return result.stdout.toString().trim();
   }
 
-  @override
   Future<ProcessResult> shell(
     List<String> arguments, {
     String? deviceId,
@@ -92,7 +34,6 @@ class AdbClientImpl extends AdbClient {
     );
   }
 
-  @override
   Future<void> forward(
     String local,
     String remote, {
@@ -108,7 +49,6 @@ class AdbClientImpl extends AdbClient {
     ]);
   }
 
-  @override
   Future<void> forwardRemove(String local, {String? deviceId}) async {
     await runner.run(adbPath, [
       ..._baseArgs(deviceId),
@@ -118,7 +58,6 @@ class AdbClientImpl extends AdbClient {
     ]);
   }
 
-  @override
   Future<void> reverse(
     String remote,
     String local, {
@@ -134,7 +73,6 @@ class AdbClientImpl extends AdbClient {
     ]);
   }
 
-  @override
   Future<void> reverseRemove(String remote, {String? deviceId}) async {
     await runner.run(adbPath, [
       ..._baseArgs(deviceId),
@@ -144,7 +82,6 @@ class AdbClientImpl extends AdbClient {
     ]);
   }
 
-  @override
   Future<void> push(
     String localPath,
     String remotePath, {
@@ -158,7 +95,6 @@ class AdbClientImpl extends AdbClient {
     ]);
   }
 
-  @override
   Future<String> pair(String ip, int port, String code) async {
     if (code.length != 6 || int.tryParse(code) == null) {
       throw const AdbException('Pairing code must be 6 digits.');
@@ -182,7 +118,6 @@ class AdbClientImpl extends AdbClient {
     );
   }
 
-  @override
   Future<String> connect(String ip, int port) async {
     final address = '$ip:$port';
     final result = await runner.run(adbPath, ['connect', address]);
@@ -194,7 +129,6 @@ class AdbClientImpl extends AdbClient {
     throw AdbException('Connect failed: $output');
   }
 
-  @override
   Future<List<String>> getDevices() async {
     final result = await runner.run(adbPath, ['devices']);
     final lines = result.stdout.toString().split('\n');

@@ -27,9 +27,9 @@ class FakeRunner extends AdbProcessRunner {
 }
 
 void main() {
-  group('AdbClientImpl', () {
+  group('AdbClient', () {
     test('pair validates 6 digit code', () async {
-      final client = AdbClientImpl(runner: const FakeRunner(''));
+      final client = AdbClient(runner: const FakeRunner(''));
       await expectLater(
         client.pair('192.168.1.1', 5555, '123'),
         throwsA(isA<AdbException>()),
@@ -37,7 +37,7 @@ void main() {
     });
 
     test('pair success parses output', () async {
-      final client = AdbClientImpl(
+      final client = AdbClient(
         runner:
             const FakeRunner('Successfully paired to 192.168.1.1:5555 [guid]'),
       );
@@ -46,7 +46,7 @@ void main() {
     });
 
     test('pair throws on connection refused', () async {
-      final client = AdbClientImpl(
+      final client = AdbClient(
         runner: const FakeRunner('', 1, 'error: Connection refused'),
       );
       await expectLater(
@@ -67,13 +67,13 @@ List of devices attached
 192.168.1.1:5555\tdevice
 emulator-5554\toffline
 ''';
-      final client = AdbClientImpl(runner: const FakeRunner(stdout));
+      final client = AdbClient(runner: const FakeRunner(stdout));
       final devices = await client.getDevices();
       expect(devices, ['192.168.1.1:5555', 'emulator-5554']);
     });
 
     test('shell returns result even on non-zero exit code', () async {
-      final client = AdbClientImpl(runner: const FakeRunner('error output', 1));
+      final client = AdbClient(runner: const FakeRunner('error output', 1));
       final result = await client.shell(['ls', '/nonexistent']);
       expect(result.exitCode, 1);
       expect(result.stdout.toString(), 'error output');

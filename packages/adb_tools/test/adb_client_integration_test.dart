@@ -7,7 +7,7 @@ void main() {
     late AdbClient client;
 
     setUpAll(() {
-      client = const AdbClientImpl();
+      client = const AdbClient();
     });
 
     test(
@@ -39,7 +39,7 @@ void main() {
     );
 
     test('getVersion fails with wrong adb path', () async {
-      const badClient = AdbClientImpl(adbPath: '/nonexistent/adb');
+      const badClient = AdbClient(adbPath: '/nonexistent/adb');
 
       await expectLater(
         badClient.getVersion(),

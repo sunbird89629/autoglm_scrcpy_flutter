@@ -9,7 +9,7 @@ import 'package:scrcpy_view/scrcpy_core.dart';
 void main(List<String> args) async {
   initLogging();
   final adbPath = args.isNotEmpty ? args[0] : 'adb';
-  final adb = AdbClientImpl(adbPath: adbPath);
+  final adb = AdbClient(adbPath: adbPath);
   final scrcpyAdb = ScrcpyMcpAdb(adb);
 
   final session = await ScrcpySessionImpl.create(adb: scrcpyAdb);

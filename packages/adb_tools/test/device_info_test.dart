@@ -40,7 +40,7 @@ const _sampleGetprop = '''
 void main() {
   group('AdbClient.getDeviceInfo', () {
     test('returns device with model info', () async {
-      final client = AdbClientImpl(
+      final client = AdbClient(
         runner: _MapRunner({
           '-s R3CN12345 shell getprop': _sampleGetprop,
         }),
@@ -59,7 +59,7 @@ void main() {
     });
 
     test('Wi-Fi serial sets isWifi true', () async {
-      final client = AdbClientImpl(
+      final client = AdbClient(
         runner: _MapRunner({
           '-s 192.168.1.5:5555 shell getprop': _sampleGetprop,
         }),
@@ -70,7 +70,7 @@ void main() {
     });
 
     test('getprop exception throws AdbException', () async {
-      final client = AdbClientImpl(
+      final client = AdbClient(
         runner: _MapRunner({}, throwOn: 'getprop'),
       );
 
@@ -81,7 +81,7 @@ void main() {
     });
 
     test('empty getprop returns null fields', () async {
-      final client = AdbClientImpl(
+      final client = AdbClient(
         runner: _MapRunner({
           '-s R3CN12345 shell getprop': '',
         }),
