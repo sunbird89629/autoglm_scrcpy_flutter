@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:adb_tools/src/exceptions.dart';
-import 'package:autoglm_logger/autoglm_logger.dart';
+import 'package:logger_utils/logger_utils.dart';
 
 /// Abstract base for running ADB processes.
 ///

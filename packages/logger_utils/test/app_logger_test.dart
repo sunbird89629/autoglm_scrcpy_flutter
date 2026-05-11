@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:autoglm_logger/autoglm_logger.dart';
+import 'package:logger_utils/logger_utils.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -8,7 +8,7 @@ void main() {
     late Directory tempDir;
 
     setUp(() {
-      tempDir = Directory.systemTemp.createTempSync('autoglm_logger_test_');
+      tempDir = Directory.systemTemp.createTempSync('logger_utils_test_');
     });
 
     tearDown(() {

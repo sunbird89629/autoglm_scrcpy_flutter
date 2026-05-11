@@ -1,5 +1,5 @@
 import 'package:adb_tools/adb_tools.dart';
-import 'package:autoglm_logger/app_logger.dart';
+import 'package:logger_utils/app_logger.dart';
 import 'package:test/test.dart';
 
 void main() {

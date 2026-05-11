@@ -10,8 +10,8 @@ resolution: workspace
 
 dependencies:
   archive: ^3.6.1
-  autoglm_logger:
-    path: ../autoglm_logger
+  logger_utils:
+    path: ../logger_utils
   dio: ^5.7.0
   path: ^1.9.0
 

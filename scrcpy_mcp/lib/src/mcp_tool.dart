@@ -1,4 +1,4 @@
-import 'package:autoglm_logger/autoglm_logger.dart';
+import 'package:logger_utils/logger_utils.dart';
 import 'package:mcp_dart/mcp_dart.dart' hide Logger;
 import 'package:scrcpy_view/scrcpy_core.dart';
 

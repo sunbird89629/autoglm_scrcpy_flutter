@@ -1,4 +1,4 @@
-name: autoglm_logger
+name: logger_utils
 description: Application-wide logger with daily-rotated file output for AutoGLM Flutter.
 publish_to: none
 version: 0.1.0

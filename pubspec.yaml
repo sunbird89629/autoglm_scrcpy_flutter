@@ -5,7 +5,7 @@ environment:
   sdk: ^3.5.0
 
 workspace:
-  - packages/autoglm_logger
+  - packages/logger_utils
   - packages/adb_tools
   - scrcpy_app
   - scrcpy_mcp

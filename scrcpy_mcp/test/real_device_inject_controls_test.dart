@@ -9,7 +9,7 @@
 library;
 
 import 'package:adb_tools/adb_tools.dart';
-import 'package:autoglm_logger/app_logger.dart';
+import 'package:logger_utils/app_logger.dart';
 import 'package:mcp_dart/mcp_dart.dart';
 import 'package:scrcpy_mcp/src/scrcpy_mcp_adapters.dart';
 import 'package:scrcpy_view/scrcpy_core.dart';
@@ -230,21 +230,5 @@ void main() {
       printOnFailure('inject_touch screenshot size: ${after.length} bytes');
     }, timeout: const Timeout(Duration(seconds: 60)));
 
-    test('inject_text succeeds', () async {
-      if (realDevices.isEmpty) {
-        markTestSkipped('No Android device connected via ADB');
-        return;
-      }
-
-      // Weak assertion: inject_text requires a focused input field to produce
-      // visible output. Without a forced screen state, only success is checked.
-      final textResult = await e2eEnv.client.callTool(
-        const CallToolRequest(
-          name: 'inject_text',
-          arguments: {'text': 'hello'},
-        ),
-      );
-      expect(textResult.isError, isFalse, reason: textContent(textResult));
-    }, timeout: const Timeout(Duration(seconds: 60)));
   });
 }

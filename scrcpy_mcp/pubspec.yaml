@@ -11,8 +11,8 @@ resolution: workspace
 dependencies:
   adb_tools:
     path: ../packages/adb_tools
-  autoglm_logger:
-    path: ../packages/autoglm_logger
+  logger_utils:
+    path: ../packages/logger_utils
   mcp_dart: ^2.1.1
   scrcpy_view:
     path: ../scrcpy_view

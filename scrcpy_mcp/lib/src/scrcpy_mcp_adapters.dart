@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:adb_tools/adb_tools.dart';
-import 'package:autoglm_logger/autoglm_logger.dart';
+import 'package:logger_utils/logger_utils.dart';
 import 'package:scrcpy_view/scrcpy_core.dart';
 
 import 'recording_adb.dart';
