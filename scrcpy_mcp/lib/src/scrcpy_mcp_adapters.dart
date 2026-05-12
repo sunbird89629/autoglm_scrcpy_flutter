@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:adb_tools/adb_tools.dart';
-import 'package:scrcpy_view/scrcpy_core.dart';
+import 'package:scrcpy_client/scrcpy_client.dart';
 
 import 'recording_adb.dart';
 import 'recording_controller.dart';

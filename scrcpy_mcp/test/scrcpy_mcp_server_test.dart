@@ -4,10 +4,10 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:mcp_dart/mcp_dart.dart';
+import 'package:scrcpy_client/scrcpy_client.dart';
 import 'package:scrcpy_mcp/src/mcp_http_server.dart';
 import 'package:scrcpy_mcp/src/recording_adb.dart';
 import 'package:scrcpy_mcp/src/scrcpy_mcp_server.dart';
-import 'package:scrcpy_view/scrcpy_core.dart';
 import 'package:test/test.dart';
 
 import 'real_device_test_utils.dart' show connectMcpPair, textContent;
@@ -142,15 +142,6 @@ class MockScrcpySession implements ScrcpySession {
 
   @override
   bool get isConnected => _fakeConnected;
-
-  @override
-  String? get proxyUrl =>
-      _fakeConnected ? 'http://127.0.0.1:27183/live' : null;
-
-  @override
-  String? get playerUrl => _fakeConnected
-      ? 'http://127.0.0.1:27184/index.html?ws=ws://127.0.0.1:27184/ws'
-      : null;
 
   @override
   Future<void> start(String deviceId) async {
