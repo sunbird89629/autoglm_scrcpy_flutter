@@ -16,3 +16,7 @@ dependencies:
 
 dev_dependencies:
   test: any
+
+flutter:
+  assets:
+    - assets/scrcpy-server-v3.3.4
