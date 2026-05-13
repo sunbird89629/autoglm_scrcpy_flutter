@@ -128,4 +128,27 @@ void main() {
       server2.stop();
     });
   });
+
+  group('ScrcpyServerOptions', () {
+    test('has correct defaults', () {
+      const opts = ScrcpyServerOptions();
+      expect(opts.maxSize, 1024);
+      expect(opts.maxFps, 60);
+      expect(opts.videoBitRate, 6000000);
+      expect(opts.videoCodec, 'h264');
+    });
+
+    test('accepts custom values', () {
+      const opts = ScrcpyServerOptions(
+        maxSize: 720,
+        maxFps: 30,
+        videoBitRate: 2000000,
+        videoCodec: 'h265',
+      );
+      expect(opts.maxSize, 720);
+      expect(opts.maxFps, 30);
+      expect(opts.videoBitRate, 2000000);
+      expect(opts.videoCodec, 'h265');
+    });
+  });
 }
