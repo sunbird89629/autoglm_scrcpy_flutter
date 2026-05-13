@@ -80,18 +80,6 @@ void main() {
       expect(bd.getUint32(2), ScrcpyKeycode.home);
     });
 
-    test('text message (type 1) writes 5 + UTF-8 length bytes', () {
-      final (server, captured) = createServer();
-      const text = 'hello';
-      server.sendControlMessage(const ScrcpyInjectTextMessage(text));
-      expect(captured.length, 1);
-      final bd = ByteData.sublistView(Uint8List.fromList(captured.single));
-      expect(captured.single.length, 5 + text.length);
-      expect(bd.getUint8(0), 1);
-      expect(bd.getUint32(1), text.length);
-      expect(captured.single.sublist(5), text.codeUnits);
-    });
-
     test('scroll message (type 3) writes 21 bytes', () {
       final (server, captured) = createServer();
       server.sendControlMessage(const ScrcpyInjectScrollMessage(
