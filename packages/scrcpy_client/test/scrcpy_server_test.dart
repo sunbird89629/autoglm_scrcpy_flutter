@@ -212,21 +212,25 @@ void main() {
   });
 
   group('ScrcpySessionImpl options threading', () {
-    test('start() accepts custom options and propagates to server', () async {
+    test('start() accepts custom options and throws on failure', () async {
       final mockAdb = MockScrcpyAdb();
-      mockAdb.shouldPushFail = true; // make _pushServer fail immediately
+      mockAdb.shouldPushFail = true;
       final session = ScrcpySessionImpl(
         adb: mockAdb,
         serverJarBytes: Uint8List(0),
       );
 
       const opts = ScrcpyServerOptions(maxSize: 720, maxFps: 30);
-      // start() will fail (push fails) — we just verify options param compiles
-      // and the options are forwarded (verified by the server storing them).
+      // options forwarding to ScrcpyServer._options is covered by the
+      // 'ScrcpyServer Configuration (options)' group above.
+      // This test verifies the parameter signature and error-path cleanup.
       await expectLater(
         () => session.start('test-device', options: opts),
         throwsException,
       );
+      // After failure, session must be in a clean state (not pending, no server assigned)
+      expect(session.server, isNull);
+      expect(session.isActive, isFalse);
     });
   });
 }
