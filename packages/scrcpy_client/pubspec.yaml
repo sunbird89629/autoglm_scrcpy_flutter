@@ -12,6 +12,7 @@ environment:
 resolution: workspace
 
 dependencies:
+  meta: any
   path: ^1.9.0
 
 dev_dependencies:

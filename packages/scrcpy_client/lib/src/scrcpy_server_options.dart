@@ -28,4 +28,16 @@ class ScrcpyServerOptions {
 
   /// Video codec (e.g., 'h264', 'h265').
   final String videoCodec;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ScrcpyServerOptions &&
+          maxSize == other.maxSize &&
+          maxFps == other.maxFps &&
+          videoBitRate == other.videoBitRate &&
+          videoCodec == other.videoCodec;
+
+  @override
+  int get hashCode => Object.hash(maxSize, maxFps, videoBitRate, videoCodec);
 }

@@ -150,5 +150,14 @@ void main() {
       expect(opts.videoBitRate, 2000000);
       expect(opts.videoCodec, 'h265');
     });
+
+    test('supports value equality', () {
+      const a = ScrcpyServerOptions(maxSize: 720);
+      const b = ScrcpyServerOptions(maxSize: 720);
+      final c = ScrcpyServerOptions(maxSize: 720);
+      expect(a, equals(b));
+      expect(a, equals(c));
+      expect(c, equals(c));
+    });
   });
 }
