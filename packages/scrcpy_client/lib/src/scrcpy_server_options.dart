@@ -40,4 +40,9 @@ class ScrcpyServerOptions {
 
   @override
   int get hashCode => Object.hash(maxSize, maxFps, videoBitRate, videoCodec);
+
+  @override
+  String toString() =>
+      'ScrcpyServerOptions(maxSize: $maxSize, maxFps: $maxFps, '
+      'videoBitRate: $videoBitRate, videoCodec: $videoCodec)';
 }

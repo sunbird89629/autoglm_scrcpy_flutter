@@ -205,9 +205,24 @@ void main() {
       const a = ScrcpyServerOptions(maxSize: 720);
       const b = ScrcpyServerOptions(maxSize: 720);
       final c = ScrcpyServerOptions(maxSize: 720);
+      // Equal instances
       expect(a, equals(b));
       expect(a, equals(c));
-      expect(c, equals(c));
+      // Not equal to different values
+      const d = ScrcpyServerOptions(maxSize: 1080);
+      expect(a, isNot(equals(d)));
+      // hashCode is consistent with ==
+      expect(a.hashCode, equals(b.hashCode));
+      expect(a.hashCode, equals(c.hashCode));
+    });
+
+    test('toString includes all fields', () {
+      const opts = ScrcpyServerOptions(maxSize: 720, maxFps: 30, videoBitRate: 2000000, videoCodec: 'h265');
+      final s = opts.toString();
+      expect(s, contains('720'));
+      expect(s, contains('30'));
+      expect(s, contains('2000000'));
+      expect(s, contains('h265'));
     });
   });
 
