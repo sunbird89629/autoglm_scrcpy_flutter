@@ -50,6 +50,7 @@ class ScrcpySessionImpl implements ScrcpySession {
   @override
   Future<void> start(
     String deviceId, {
+    ScrcpyServerOptions options = const ScrcpyServerOptions(),
     ScrcpyLogger? logger,
     void Function()? onStarted,
     void Function()? onStopped,
@@ -63,8 +64,7 @@ class ScrcpySessionImpl implements ScrcpySession {
       adb: _adb,
       deviceId: deviceId,
       serverJarBytes: _serverJarBytes,
-      // TODO(Task 3): replace with options parameter threaded from start()
-      options: const ScrcpyServerOptions(),
+      options: options,
       logger: logger ?? const NoOpScrcpyLogger(),
     );
     try {
