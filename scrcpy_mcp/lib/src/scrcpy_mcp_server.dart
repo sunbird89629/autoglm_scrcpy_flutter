@@ -12,6 +12,7 @@ import 'tools/inject_swipe.dart' show InjectSwipeTool;
 import 'tools/inject_text.dart' show InjectTextTool;
 import 'tools/press_back.dart' show PressBackTool;
 import 'tools/rotate_device.dart' show RotateDeviceTool;
+import 'tools/set_clipboard.dart' show SetClipboardTool;
 import 'tools/set_screen_power.dart' show SetScreenPowerTool;
 import 'tools/start_app.dart' show StartAppTool;
 import 'tools/inject_touch.dart' show InjectTouchTool;
@@ -76,6 +77,7 @@ class ScrcpyMcpServer {
       PressBackTool(_session),
       SetScreenPowerTool(_session),
       RotateDeviceTool(_session),
+      SetClipboardTool(_session),
       if (_recordingController != null) ...[
         StartRecordingTool(_recordingController!, _ctx, _session),
         StopRecordingTool(_recordingController!),
@@ -230,6 +232,7 @@ class ScrcpyMcpServer {
                 '- inject_key (Home=3, Back=4, AppSwitch=187)\n'
                 '- inject_touch, inject_text, inject_scroll, inject_swipe\n'
                 '- press_back, set_screen_power, rotate_device\n'
+                '- set_clipboard\n'
                 '- start_app (launch app by package name)\n'
                 '- take_screenshot\n'
                 '$recordingLine\n'

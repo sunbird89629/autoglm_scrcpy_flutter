@@ -626,6 +626,48 @@ void main() {
       expect(result.isError, isFalse);
       expect(env.session.sentMessages.single, isA<ScrcpyRotateDeviceMessage>());
     });
+
+    test('set_clipboard without active session returns error', () async {
+      final env = _TestEnv();
+      await env.connect();
+      final result = await env.client.callTool(
+        const CallToolRequest(name: 'set_clipboard', arguments: {'text': 'hello'}),
+      );
+      expect(result.isError, isTrue);
+    });
+
+    test('set_clipboard sends SetClipboardMessage with paste=false by default', () async {
+      final env = _TestEnv();
+      await env.connect();
+      await env.client.callTool(
+        const CallToolRequest(name: 'start_mirroring', arguments: {'device_id': 'device1'}),
+      );
+      final result = await env.client.callTool(
+        const CallToolRequest(name: 'set_clipboard', arguments: {'text': 'hello'}),
+      );
+      expect(result.isError, isFalse);
+      final msg = env.session.sentMessages.single as ScrcpySetClipboardMessage;
+      expect(msg.text, 'hello');
+      expect(msg.paste, isFalse);
+    });
+
+    test('set_clipboard with paste=true sends SetClipboardMessage with paste=true', () async {
+      final env = _TestEnv();
+      await env.connect();
+      await env.client.callTool(
+        const CallToolRequest(name: 'start_mirroring', arguments: {'device_id': 'device1'}),
+      );
+      final result = await env.client.callTool(
+        const CallToolRequest(
+          name: 'set_clipboard',
+          arguments: {'text': 'hello', 'paste': true},
+        ),
+      );
+      expect(result.isError, isFalse);
+      final msg = env.session.sentMessages.single as ScrcpySetClipboardMessage;
+      expect(msg.text, 'hello');
+      expect(msg.paste, isTrue);
+    });
   });
 
   group('ScrcpyMcpServer — resources', () {
