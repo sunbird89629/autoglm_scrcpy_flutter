@@ -33,7 +33,7 @@ void main() {
     });
 
     test('ASCII encodes as 5-byte header + UTF-8 bytes', () async {
-      final (server, captured) = createRealServer(
+      final server = createRealServer(
         deviceId: realDeviceId,
         jarBytes: realJarBytes,
       );
@@ -52,7 +52,7 @@ void main() {
 
     test('CJK (3 bytes/char) encodes UTF-8 byte count in length field',
         () async {
-      final (server, captured) = createRealServer(
+      final server = createRealServer(
         deviceId: realDeviceId,
         jarBytes: realJarBytes,
       );

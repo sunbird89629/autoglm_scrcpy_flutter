@@ -23,11 +23,10 @@ import 'real_adb.dart';
   return (server, captured);
 }
 
-(ScrcpyServer, List<List<int>>) createRealServer({
+ScrcpyServer createRealServer({
   String deviceId = 'test-device',
   Uint8List? jarBytes,
 }) {
-  final captured = <List<int>>[];
   final provisioner = AdbScrcpyDeviceProvisioner(
     adb: RealAdb(),
     deviceId: deviceId,
@@ -37,5 +36,5 @@ import 'real_adb.dart';
   final server = ScrcpyServer(
     provisioner: provisioner,
   );
-  return (server, captured);
+  return server;
 }
