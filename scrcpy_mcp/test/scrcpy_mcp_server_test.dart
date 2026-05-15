@@ -266,7 +266,7 @@ String _resourceText(ReadResourceResult r) =>
 
 void main() {
   group('ScrcpyMcpServer — initialization', () {
-    test('advertises 9 tools after connect', () async {
+    test('advertises 18 tools after connect', () async {
       final env = _TestEnv();
       await env.connect();
 
@@ -285,6 +285,15 @@ void main() {
           'inject_scroll',
           'inject_swipe',
           'take_screenshot',
+          'press_back',
+          'set_screen_power',
+          'rotate_device',
+          'set_clipboard',
+          'expand_notification_panel',
+          'expand_settings_panel',
+          'collapse_panels',
+          'set_torch',
+          'camera_zoom',
         ]),
       );
     });
