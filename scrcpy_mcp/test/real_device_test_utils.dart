@@ -38,6 +38,16 @@ class MockScrcpySession implements ScrcpySession {
 
   @override
   void injectText(String text) {}
+
+  @override
+  Stream<ScrcpyDeviceMessage> get deviceMessages =>
+      const Stream<ScrcpyDeviceMessage>.empty();
+
+  @override
+  Future<String> getClipboard({
+    Duration timeout = const Duration(seconds: 5),
+  }) =>
+      Future.value('');
 }
 
 // ---------------------------------------------------------------------------

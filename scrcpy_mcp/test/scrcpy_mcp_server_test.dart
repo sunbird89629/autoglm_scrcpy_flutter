@@ -161,6 +161,18 @@ class MockScrcpySession implements ScrcpySession {
 
   @override
   void injectText(String text) {}
+
+  Future<String> Function()? getClipboardImpl;
+
+  @override
+  Stream<ScrcpyDeviceMessage> get deviceMessages =>
+      const Stream<ScrcpyDeviceMessage>.empty();
+
+  @override
+  Future<String> getClipboard({
+    Duration timeout = const Duration(seconds: 5),
+  }) =>
+      getClipboardImpl?.call() ?? Future.value('');
 }
 
 // ---------------------------------------------------------------------------
@@ -266,7 +278,7 @@ String _resourceText(ReadResourceResult r) =>
 
 void main() {
   group('ScrcpyMcpServer — initialization', () {
-    test('advertises 19 tools after connect', () async {
+    test('advertises 20 tools after connect', () async {
       final env = _TestEnv();
       await env.connect();
 
@@ -289,6 +301,7 @@ void main() {
           'set_screen_power',
           'rotate_device',
           'set_clipboard',
+          'get_clipboard',
           'expand_notification_panel',
           'expand_settings_panel',
           'collapse_panels',
@@ -842,6 +855,53 @@ void main() {
         const CallToolRequest(name: 'camera_zoom', arguments: {'direction': 'sideways'}),
       );
       expect(result.isError, isTrue);
+    });
+
+    test('get_clipboard without active session returns error', () async {
+      final env = _TestEnv();
+      await env.connect();
+
+      final result = await env.client.callTool(
+        const CallToolRequest(name: 'get_clipboard'),
+      );
+
+      expect(result.isError, isTrue);
+    });
+
+    test('get_clipboard returns clipboard text', () async {
+      final env = _TestEnv();
+      await env.connect();
+      await env.client.callTool(
+        const CallToolRequest(
+            name: 'start_mirroring', arguments: {'device_id': 'device1'}),
+      );
+      env.session.getClipboardImpl = () async => 'copied text';
+
+      final result = await env.client.callTool(
+        const CallToolRequest(name: 'get_clipboard'),
+      );
+
+      expect(result.isError, isFalse);
+      expect(textContent(result), 'copied text');
+    });
+
+    test('get_clipboard returns error on timeout', () async {
+      final env = _TestEnv();
+      await env.connect();
+      await env.client.callTool(
+        const CallToolRequest(
+            name: 'start_mirroring', arguments: {'device_id': 'device1'}),
+      );
+      env.session.getClipboardImpl = () => Future.error(
+        TimeoutException('timeout', const Duration(seconds: 5)),
+      );
+
+      final result = await env.client.callTool(
+        const CallToolRequest(name: 'get_clipboard'),
+      );
+
+      expect(result.isError, isTrue);
+      expect(textContent(result), contains('Timed out'));
     });
   });
 
