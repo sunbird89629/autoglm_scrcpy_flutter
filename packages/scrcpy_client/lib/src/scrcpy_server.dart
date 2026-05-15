@@ -2,7 +2,10 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:meta/meta.dart';
+import 'package:scrcpy_client/src/messages/device_message.dart';
 import 'package:scrcpy_client/src/messages/scrcpy_control_message.dart';
+import 'package:scrcpy_client/src/scrcpy_device_message_parser.dart';
 import 'package:scrcpy_client/src/scrcpy_device_provisioner.dart';
 import 'package:scrcpy_client/src/scrcpy_logger.dart';
 import 'package:scrcpy_client/src/scrcpy_packet.dart';
@@ -21,7 +24,8 @@ class ScrcpyServer {
   })  : _provisioner = provisioner,
         _log = logger,
         _controlSink = controlSink,
-        _parser = ScrcpyStreamParser(logger: logger);
+        _parser = ScrcpyStreamParser(logger: logger),
+        _deviceParser = ScrcpyDeviceMessageParser(logger: logger);
 
   final ScrcpyDeviceProvisioner _provisioner;
 
@@ -33,6 +37,7 @@ class ScrcpyServer {
 
   final ScrcpyLogger _log;
   final ScrcpyStreamParser _parser;
+  final ScrcpyDeviceMessageParser _deviceParser;
   final StreamSink<List<int>>? _controlSink;
 
   bool _isStarting = false;
@@ -47,6 +52,15 @@ class ScrcpyServer {
 
   /// Stream of scrcpy metadata (device name, codec info).
   Stream<ScrcpyMetadata> get metadata => _parser.metadata;
+
+  /// Stream of parsed device→host messages from the control socket.
+  Stream<ScrcpyDeviceMessage> get deviceMessages => _deviceParser.messages;
+
+  /// Feeds raw bytes directly into the device message parser.
+  ///
+  /// For testing only — in production, bytes come from the control socket.
+  @visibleForTesting
+  void feedDeviceBytes(Uint8List data) => _deviceParser.feed(data);
 
   /// Last parsed metadata, or `null` if the header has not arrived yet.
   ScrcpyMetadata? get currentMetadata => _parser.currentMetadata;
@@ -106,7 +120,7 @@ class ScrcpyServer {
     }
     _controlSocket!.setOption(SocketOption.tcpNoDelay, true);
     _controlSubscription = _controlSocket!.listen(
-      (data) => _log.debug('[ScrcpyServer] Control data: ${data.length} bytes'),
+      (data) => _deviceParser.feed(data),
       onDone: () => _log.warn('[ScrcpyServer] Control socket closed'),
     );
 
@@ -150,5 +164,6 @@ class ScrcpyServer {
     await _provisioner.depovision();
 
     _parser.close();
+    _deviceParser.close();
   }
 }
