@@ -1,0 +1,149 @@
+import 'dart:io';
+
+import 'package:adb_tools/adb_tools.dart';
+import 'package:logger_utils/logger_utils.dart';
+import 'package:tray_manager/tray_manager.dart';
+import 'package:scrcpy_plus/app/menu_builder.dart';
+import 'package:scrcpy_plus/device/device_manager.dart';
+import 'package:scrcpy_plus/device/pairing_service.dart';
+import 'package:scrcpy_plus/scrcpy/scrcpy_config.dart';
+import 'package:scrcpy_plus/scrcpy/scrcpy_launcher.dart';
+import 'package:scrcpy_plus/settings/settings_manager.dart';
+
+/// Application-wide logger instance.
+final appLogger = Logger('scrcpy_plus');
+
+/// Central controller orchestrating tray, devices, scrcpy, and settings.
+class AppController implements TrayListener {
+  AppController({
+    required this.settingsManager,
+    AdbClient? adb,
+  })  : adb = adb ?? const AdbClient(),
+        pairingService = PairingService(adb: adb ?? const AdbClient()) {
+    deviceManager = DeviceManager(adb: this.adb);
+    launcher = ScrcpyLauncher();
+  }
+
+  final SettingsManager settingsManager;
+  final AdbClient adb;
+  final PairingService pairingService;
+  late final DeviceManager deviceManager;
+  late final ScrcpyLauncher launcher;
+
+  /// Static helpers for menu key parsing.
+  static bool isLaunchAction(String key) =>
+      key.startsWith(MenuBuilder.launchPrefix);
+  static bool isDisconnectAction(String key) =>
+      key.startsWith(MenuBuilder.disconnectPrefix);
+  static String? serialFromAction(String key, String prefix) {
+    if (!key.startsWith(prefix)) return null;
+    return key.substring(prefix.length);
+  }
+
+  /// Initialize the app: load settings, start polling, set up tray.
+  Future<void> init() async {
+    final config = await settingsManager.loadConfig();
+    launcher.config = config;
+
+    deviceManager.addListener(_updateTrayMenu);
+    await deviceManager.refresh();
+    deviceManager.startPolling();
+
+    await _initTray();
+  }
+
+  Future<void> _initTray() async {
+    trayManager.addListener(this);
+    await trayManager.setIcon('assets/tray_icon.png');
+    await trayManager.setToolTip('scrcpy_plus');
+    await _updateTrayMenu();
+  }
+
+  Future<void> _updateTrayMenu() async {
+    final menu = MenuBuilder.buildMenu(devices: deviceManager.devices);
+    await trayManager.setContextMenu(menu);
+
+    // Update icon based on connection state
+    final icon = deviceManager.hasConnected
+        ? 'assets/tray_icon_connected.png'
+        : 'assets/tray_icon.png';
+    await trayManager.setIcon(icon);
+  }
+
+  @override
+  void onTrayIconMouseDown() {
+    trayManager.popUpContextMenu();
+  }
+
+  @override
+  void onTrayMenuItemClick(MenuItem menuItem) {
+    final key = menuItem.key;
+    if (key == null) return;
+
+    if (key == 'quit') {
+      _quit();
+    } else if (key == 'refresh') {
+      deviceManager.refresh();
+    } else if (key == 'pair') {
+      _showPairDialog();
+    } else if (key == 'settings') {
+      _showSettingsDialog();
+    } else if (isLaunchAction(key)) {
+      final serial = serialFromAction(key, MenuBuilder.launchPrefix);
+      if (serial != null) _launchScrcpy(serial);
+    } else if (isDisconnectAction(key)) {
+      final serial = serialFromAction(key, MenuBuilder.disconnectPrefix);
+      if (serial != null) _disconnectDevice(serial);
+    }
+  }
+
+  Future<void> _launchScrcpy(String serial) async {
+    try {
+      await launcher.launch(serial);
+    } catch (e) {
+      appLogger.severe('Failed to launch scrcpy: $e');
+    }
+  }
+
+  Future<void> _disconnectDevice(String serial) async {
+    try {
+      await pairingService.disconnect(serial);
+      await deviceManager.refresh();
+    } catch (e) {
+      appLogger.severe('Failed to disconnect $serial: $e');
+    }
+  }
+
+  void _showPairDialog() {
+    // TODO: Implement native dialog for IP+code input
+    appLogger.info('Pair dialog not yet implemented');
+  }
+
+  void _showSettingsDialog() {
+    // TODO: Implement settings dialog
+    appLogger.info('Settings dialog not yet implemented');
+  }
+
+  void _quit() {
+    launcher.dispose();
+    deviceManager.dispose();
+    trayManager.destroy();
+    exit(0);
+  }
+
+  void dispose() {
+    launcher.dispose();
+    deviceManager.dispose();
+    trayManager.removeListener(this);
+  }
+
+  // TrayListener stubs
+  @override
+  void onTrayIconMouseUp() {}
+
+  @override
+  void onTrayIconRightMouseDown() {}
+
+  @override
+  void onTrayIconRightMouseUp() {}
+}
