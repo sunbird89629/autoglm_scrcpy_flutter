@@ -16,6 +16,8 @@ dependencies:
     path: ../packages/logger_utils
   scrcpy_mcp:
     path: ../scrcpy_mcp
+  scrcpy_client:
+    path: ../packages/scrcpy_client
   flutter:
     sdk: flutter
   tray_manager: ^0.4.0
