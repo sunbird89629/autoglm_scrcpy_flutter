@@ -12,6 +12,8 @@ import '../session_context.dart';
 
 /// Common app name → package name mappings for autoglm-phone's Launch action.
 const _appNameToPackage = {
+  'Chrome': 'com.android.chrome',
+  'chrome': 'com.android.chrome',
   '微信': 'com.tencent.mm',
   'WeChat': 'com.tencent.mm',
   '支付宝': 'com.eg.android.AlipayGphone',

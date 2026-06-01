@@ -31,8 +31,11 @@ class PhoneAgent {
   final ActionRunner actionRunner;
 
   Future<AgentResult> run(String message) async {
+    final dateStr =
+        '${DateTime.now().year}年${DateTime.now().month}月${DateTime.now().day}日';
+    final systemPrompt = config.systemPrompt.replaceFirst('{DATE}', dateStr);
     final messages = <LlmMessage>[
-      LlmMessage(role: 'system', textContent: config.systemPrompt),
+      LlmMessage(role: 'system', textContent: systemPrompt),
     ];
 
     for (var step = 0; step < config.maxSteps; step++) {
@@ -81,13 +84,21 @@ class PhoneAgent {
 
       switch (action) {
         case DoAction():
+          // Take_over means the task cannot continue without human help.
+          if (action.action == 'Take_over') {
+            return AgentResult(
+              result: 'Task requires human: ${action.message ?? ""}',
+              steps: step + 1,
+              success: false,
+            );
+          }
+
           String result;
           try {
             result = await actionRunner(action);
           } catch (e) {
             result = 'Error executing $action: $e';
           }
-          // Result will show in next step's screenshot — no tool message needed
           if (step == config.maxSteps - 1) {
             return AgentResult(
               result: 'Max steps reached after executing: $action → $result',

@@ -40,6 +40,9 @@ class OpenAiLlmClient implements LlmClient {
     final rawBody = {
       'model': model,
       'messages': messages.map(_messageToJson).toList(),
+      'max_tokens': 3000,
+      'frequency_penalty': 0.5,
+      'temperature': 0.1,
     };
     final body = jsonEncode(rawBody);
 
