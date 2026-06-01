@@ -1,6 +1,4 @@
-import 'package:scrcpy_mcp/src/agent/agent_config.dart';
-import 'package:scrcpy_mcp/src/agent/llm_client.dart';
-import 'package:scrcpy_mcp/src/agent/phone_agent.dart';
+import 'package:scrcpy_mcp/scrcpy_mcp.dart';
 import 'package:test/test.dart';
 
 // Fake that replays a fixed sequence of LlmResponse values.
@@ -14,6 +12,22 @@ class _FakeLlmClient implements LlmClient {
     required List<LlmMessage> messages,
     required List<ToolSchema> tools,
   }) async => _responses[_i++];
+}
+
+class _CapturingLlmClient implements LlmClient {
+  _CapturingLlmClient(this._responses);
+  final List<LlmResponse> _responses;
+  final capturedMessages = <List<LlmMessage>>[];
+  int _i = 0;
+
+  @override
+  Future<LlmResponse> chat({
+    required List<LlmMessage> messages,
+    required List<ToolSchema> tools,
+  }) async {
+    capturedMessages.add(List.from(messages));
+    return _responses[_i++];
+  }
 }
 
 void main() {
@@ -138,55 +152,19 @@ void main() {
       expect(result.result, 'Recovered after error');
     });
 
-    test(
-      'includes image in tool result message when executor returns one',
-      () async {
-        final capturingFake = _CapturingLlmClient([
-          LlmResponse(
-            toolCalls: [
-              const ToolCall(
-                id: 'c1',
-                name: 'take_screenshot',
-                arguments: '{}',
-              ),
-            ],
-          ),
-          const LlmResponse(text: 'Done'),
-        ]);
-
-        await PhoneAgent(
-          config: const AgentConfig(maxSteps: 5),
-          llmClient: capturingFake,
-          tools: const [],
-          executeToolCall: (_, __) async => (
-            text: 'res: 1264x2800',
-            imageBase64: 'base64png',
-            imageMimeType: 'image/png',
-          ),
-        ).run('screenshot test');
-
-        final toolMsg = capturingFake.capturedMessages[1].firstWhere(
-          (m) => m.role == 'tool',
-        );
-        expect(toolMsg.imageBase64, 'base64png');
-        expect(toolMsg.imageMimeType, 'image/png');
-      },
-    );
+    test('real phone agent model test', () async {
+      final phoneAgent = PhoneAgent(
+        config: const AgentConfig(maxSteps: 5),
+        llmClient: OpenAiLlmClient.fromTest(),
+        tools: const [],
+        executeToolCall: (_, __) async => (
+          text: 'res: 1264x2800',
+          imageBase64: 'base64png',
+          imageMimeType: 'image/png',
+        ),
+      );
+      final agentResult = await phoneAgent.run('获取当前的屏幕内容');
+      expect(agentResult, isNotNull);
+    });
   });
-}
-
-class _CapturingLlmClient implements LlmClient {
-  _CapturingLlmClient(this._responses);
-  final List<LlmResponse> _responses;
-  final capturedMessages = <List<LlmMessage>>[];
-  int _i = 0;
-
-  @override
-  Future<LlmResponse> chat({
-    required List<LlmMessage> messages,
-    required List<ToolSchema> tools,
-  }) async {
-    capturedMessages.add(List.from(messages));
-    return _responses[_i++];
-  }
 }

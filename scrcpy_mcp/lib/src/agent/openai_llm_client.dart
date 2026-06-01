@@ -2,8 +2,11 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:logger_utils/logger_utils.dart';
 
 import 'llm_client.dart';
+
+final _log = Logger('scrcpy.mcp.llm');
 
 class OpenAiLlmClient implements LlmClient {
   OpenAiLlmClient({
@@ -40,11 +43,14 @@ class OpenAiLlmClient implements LlmClient {
     required List<ToolSchema> tools,
   }) async {
     final uri = Uri.parse('$baseUrl/chat/completions');
-    final body = jsonEncode({
+    final rawBody = {
       'model': model,
       'messages': messages.map(_messageToJson).toList(),
       if (tools.isNotEmpty) 'tools': tools.map(_toolToJson).toList(),
-    });
+    };
+    final body = jsonEncode(rawBody);
+
+    _log.info('→ POST $uri\n${_summarizeBody(rawBody)}');
 
     final response = await _http.post(
       uri,
@@ -54,6 +60,9 @@ class OpenAiLlmClient implements LlmClient {
       },
       body: body,
     );
+
+    _log.info('← HTTP ${response.statusCode} '
+        '${response.statusCode == 200 ? "" : response.body}');
 
     if (response.statusCode != 200) {
       throw LlmException('HTTP ${response.statusCode}: ${response.body}');
@@ -114,6 +123,38 @@ class OpenAiLlmClient implements LlmClient {
     }
 
     return map;
+  }
+
+  /// Returns a copy of [body] with base64 images truncated to keep logs
+  /// readable.
+  static Map<String, dynamic> _summarizeBody(Map<String, dynamic> body) {
+    final copy = Map<String, dynamic>.from(body);
+    final msgs = (copy['messages'] as List).cast<Map<String, dynamic>>();
+    copy['messages'] = msgs.map((m) {
+      final content = m['content'];
+      if (content is List) {
+        return {
+          ...m,
+          'content': content.map((part) {
+            if (part is Map && part['type'] == 'image_url') {
+              final url =
+                  (part['image_url'] as Map)['url'] as String? ?? '';
+              return {
+                ...part,
+                'image_url': {
+                  'url': url.length > 80
+                      ? '${url.substring(0, 80)}...<truncated>'
+                      : url,
+                },
+              };
+            }
+            return part;
+          }).toList(),
+        };
+      }
+      return m;
+    }).toList();
+    return copy;
   }
 
   Map<String, dynamic> _toolToJson(ToolSchema t) => {
