@@ -1,25 +1,28 @@
+import 'dart:convert';
+
+import 'package:adb_tools/adb_tools.dart';
 import 'package:logger_utils/logger_utils.dart';
 import 'package:scrcpy_mcp/scrcpy_mcp.dart';
 import 'package:test/test.dart';
 
-/// Dummy screenshot — a minimal 1x1 PNG.
-Future<({String base64, String mimeType})> _fakeScreenshot() async => (
-  base64:
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk'
-      '+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-  mimeType: 'image/png',
-);
+String get _deviceId => '39111FDJH00D47';
 
 void main() {
+  const String taskContent = '帮我通过 chrome 打开 twitter 的官网';
   test('real phone agent model test', () async {
     initLogging();
+    final adb = ScrcpyMcpAdb(AdbClient());
+
     final phoneAgent = PhoneAgent(
       config: const AgentConfig(maxSteps: 5),
       llmClient: OpenAiLlmClient.fromTest(),
-      takeScreenshot: _fakeScreenshot,
+      takeScreenshot: () async {
+        final bytes = await adb.takeScreenshot(_deviceId);
+        return (base64: base64Encode(bytes), mimeType: 'image/png');
+      },
       actionRunner: (action) async => 'executed: $action',
     );
-    final agentResult = await phoneAgent.run('获取当前的屏幕内容');
+    final agentResult = await phoneAgent.run(taskContent);
     expect(agentResult, isNotNull);
-  });
+  }, skip: false);
 }
