@@ -111,35 +111,63 @@ void main() {
       expect(lastMsg.imageBase64, isNotNull);
     });
 
-    test('keeps only the most recent screenshot in history', () async {
+    test('keeps only the last keepScreenshots screenshots in history', () async {
       final capturingFake = _CapturingLlmClient([
         const LlmResponse(text: 'do(action="Tap", element=[500,300])'),
         const LlmResponse(text: 'do(action="Tap", element=[600,400])'),
+        const LlmResponse(text: 'do(action="Tap", element=[700,500])'),
+        const LlmResponse(text: 'do(action="Tap", element=[800,600])'),
         const LlmResponse(text: 'finish(message="Done")'),
       ]);
 
+      // Distinct screenshot per step so each is unique (and stall detection
+      // never trips).
+      var shot = 0;
+      Future<({String base64, String mimeType})> distinctScreenshot() async =>
+          (base64: 'frame-${shot++}', mimeType: 'image/png');
+
       final agent = PhoneAgent(
-        config: const AgentConfig(maxSteps: 5),
+        config: const AgentConfig(maxSteps: 6, keepScreenshots: 2),
         llmClient: capturingFake,
-        takeScreenshot: _fakeScreenshot,
+        takeScreenshot: distinctScreenshot,
         actionRunner: (_) async => 'ok',
       );
 
-      await agent.run('tap twice');
+      await agent.run('tap repeatedly');
 
-      // Third call carries two prior user screenshots + the current one, but
-      // only the current (last) one should retain its image.
-      final thirdCall = capturingFake.capturedMessages[2];
-      final withImages = thirdCall.where((m) => m.imageBase64 != null);
-      expect(withImages.length, 1);
-      expect(thirdCall.last.imageBase64, isNotNull);
+      // Last call (the finish step) carries 5 prior user screenshots, but only
+      // the 2 most recent should retain their image.
+      final lastCall = capturingFake.capturedMessages.last;
+      final withImages =
+          lastCall.where((m) => m.imageBase64 != null).toList();
+      expect(withImages.length, 2);
+      // The retained images are the two most recent frames.
+      expect(withImages.map((m) => m.imageBase64), ['frame-3', 'frame-4']);
 
       // Older user messages keep their text but drop the screenshot.
-      final staleUserMsgs = thirdCall
+      final staleUserMsgs = lastCall
           .where((m) => m.role == 'user' && m.imageBase64 == null)
           .toList();
       expect(staleUserMsgs, isNotEmpty);
       expect(staleUserMsgs.first.textContent, contains('历史截图已省略'));
+    });
+
+    test('aborts when the screen is unchanged for stallThreshold steps',
+        () async {
+      // Model keeps guessing taps; the fake screenshot never changes.
+      final result = await makeAgent(
+        List.generate(
+          8,
+          (_) => const LlmResponse(
+            text: 'do(action="Tap", element=[499,577])',
+          ),
+        ),
+      ).run('dismiss a dialog that will not move');
+
+      expect(result.success, isFalse);
+      expect(result.result, contains('unchanged'));
+      // stallThreshold defaults to 3: aborts at step index 3 → 4 steps.
+      expect(result.steps, 4);
     });
 
     test('returns failure when max steps reached', () async {

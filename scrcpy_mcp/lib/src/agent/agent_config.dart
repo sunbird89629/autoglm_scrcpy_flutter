@@ -42,6 +42,8 @@ class AgentConfig {
   const AgentConfig({
     this.maxSteps = 15,
     this.systemPrompt = _kDefaultSystemPrompt,
+    this.keepScreenshots = 3,
+    this.stallThreshold = 3,
   });
 
   factory AgentConfig.fromEnv() => AgentConfig(
@@ -52,6 +54,17 @@ class AgentConfig {
 
   final int maxSteps;
   final String systemPrompt;
+
+  /// How many of the most recent screenshots to keep in the LLM context.
+  /// Older screenshots are dropped to stay within autoglm-phone's 20K window.
+  /// Keep ≥3 so the model can compare consecutive frames and detect a stalled
+  /// screen (its rule "连续3次操作后界面没有变化").
+  final int keepScreenshots;
+
+  /// Abort the task when the screen stays byte-identical for this many
+  /// consecutive steps — actions are having no visible effect. Acts as a
+  /// backstop for the model failing to self-detect a stall.
+  final int stallThreshold;
 }
 
 class AgentResult {

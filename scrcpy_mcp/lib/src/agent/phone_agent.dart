@@ -38,9 +38,33 @@ class PhoneAgent {
       LlmMessage(role: 'system', textContent: systemPrompt),
     ];
 
+    String? prevScreenshot;
+    var stalledSteps = 0;
+
     for (var step = 0; step < config.maxSteps; step++) {
       // 1. Take screenshot
       final screenshot = await takeScreenshot();
+
+      // Stall backstop: if the screen is unchanged across consecutive steps,
+      // the actions are having no effect. Abort instead of burning steps/tokens
+      // re-asking the model (which often keeps guessing). Mirrors the prompt's
+      // own "连续3次操作后界面没有变化" rule, which the model tends to ignore.
+      if (prevScreenshot != null && screenshot.base64 == prevScreenshot) {
+        stalledSteps++;
+      } else {
+        stalledSteps = 0;
+      }
+      prevScreenshot = screenshot.base64;
+      if (stalledSteps >= config.stallThreshold) {
+        return AgentResult(
+          result:
+              'Aborted: screen unchanged for ${stalledSteps + 1} consecutive '
+              'steps — actions are having no visible effect.',
+          steps: step + 1,
+          success: false,
+        );
+      }
+
       final userContent = step == 0 ? message : '继续执行任务';
 
       // 2. Send to LLM with screenshot
@@ -126,26 +150,27 @@ class PhoneAgent {
     );
   }
 
-  /// Returns a copy of [messages] where only the most recent screenshot is
-  /// kept. autoglm-phone has a 20K-token context window and each full-screen
-  /// screenshot costs ~1–1.5K tokens, so retaining every step's image would
-  /// overflow the window within a handful of steps and eventually evict the
-  /// system prompt. The model decides from the current screen plus the textual
-  /// action history (the assistant turns), so stale screenshots only waste
-  /// tokens — drop them but keep their text.
-  static List<LlmMessage> _trimHistory(List<LlmMessage> messages) {
-    var lastImageIndex = -1;
-    for (var i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].imageBase64 != null) {
-        lastImageIndex = i;
-        break;
-      }
-    }
-    if (lastImageIndex == -1) return List.unmodifiable(messages);
+  /// Returns a copy of [messages] keeping only the [AgentConfig.keepScreenshots]
+  /// most recent screenshots. autoglm-phone has a 20K-token context window and
+  /// each full-screen screenshot costs ~1–1.5K tokens, so retaining every
+  /// step's image would overflow the window and eventually evict the system
+  /// prompt. Keeping the last few (not just one) lets the model compare recent
+  /// frames to notice a stalled screen; older images are dropped but their text
+  /// is preserved.
+  List<LlmMessage> _trimHistory(List<LlmMessage> messages) {
+    final keep = config.keepScreenshots;
 
+    // Indices of image-bearing messages, newest first.
+    final imageIndices = <int>[];
+    for (var i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].imageBase64 != null) imageIndices.add(i);
+    }
+    if (imageIndices.length <= keep) return List.unmodifiable(messages);
+
+    final keepSet = imageIndices.take(keep).toSet();
     return List.unmodifiable([
       for (var i = 0; i < messages.length; i++)
-        if (i == lastImageIndex || messages[i].imageBase64 == null)
+        if (messages[i].imageBase64 == null || keepSet.contains(i))
           messages[i]
         else
           LlmMessage(
