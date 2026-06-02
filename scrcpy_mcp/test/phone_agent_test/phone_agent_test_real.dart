@@ -14,7 +14,7 @@ import 'visual_assertion.dart';
 const _deviceId = '39111FDJH00D47';
 const _task = '''
   帮我通过 chrome 打开 twitter 的官网,具体步骤如下：
-  1. 先进入桌面
+  1. 如果当前不在 **HOME** 页面，先通过 HOME 键进入  HOME 页面
   2. 打开chrome
   3. 在地址栏输入 twitter 的网址：https://www.x.com
   4. 点击输入法上的确认按钮
@@ -41,16 +41,10 @@ void main() {
       await session.start(_deviceId);
 
       try {
-        Future<(int, int)> screenSize() async {
-          if (session.videoWidth != null && session.videoHeight != null) {
-            return (session.videoWidth!, session.videoHeight!);
-          }
-          final r = await adb.shell(['wm', 'size'], deviceId: _deviceId);
-          final m = RegExp(r'(\d+)x(\d+)').firstMatch(r.stdout as String);
-          return m != null
-              ? (int.parse(m.group(1)!), int.parse(m.group(2)!))
-              : (1080, 1920);
-        }
+        // autoglm-phone emits [0,1000] normalized coordinates; scrcpy scales
+        // them against the frame size, so a 1000×1000 frame maps each coord to
+        // x/1000×deviceW. Mirrors the production fix in run_task.dart.
+        Future<(int, int)> screenSize() async => (1000, 1000);
 
         Future<String> runAction(PhoneAction action) async {
           switch (action) {

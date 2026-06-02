@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:mcp_dart/mcp_dart.dart';
 import 'package:scrcpy_client/scrcpy_client.dart';
@@ -10,6 +9,13 @@ import '../agent/llm_client.dart';
 import '../agent/phone_agent.dart';
 import '../mcp_tool.dart';
 import '../session_context.dart';
+
+/// autoglm-phone emits coordinates normalized to a 1000×1000 grid (see the
+/// official handler: `x = element[0] / 1000 * screen_width`). scrcpy's touch
+/// protocol scales `x / frameWidth * deviceWidth`, so passing the raw model
+/// coordinate with a 1000×1000 frame lands at the correct device pixel,
+/// independent of the actual device resolution.
+const _kCoordSpace = 1000;
 
 /// Common app name → package name mappings for autoglm-phone's Launch action.
 const _appNameToPackage = {
@@ -85,22 +91,14 @@ class RunTaskTool extends McpTool {
     }
     logger.fine('run_task: message="$message"');
 
-    // The model reasons on the ADB screencap, whose resolution is the device's
-    // native resolution — NOT the (maxSize-scaled) scrcpy video resolution.
-    // Capture each screenshot's real dimensions and feed them to touch
-    // injection so coordinates map back to the exact space the model saw.
-    // Using video dimensions here scales every tap wrong and misses targets.
-    (int, int)? lastShotSize;
-
     final agent = PhoneAgent(
       config: _config,
       llmClient: _llmClient,
       takeScreenshot: () async {
         final bytes = await _adb.takeScreenshot(deviceId);
-        lastShotSize = _pngSize(bytes) ?? lastShotSize;
         return (base64: base64Encode(bytes), mimeType: 'image/png');
       },
-      actionRunner: (action) => _executeAction(action, deviceId, lastShotSize),
+      actionRunner: (action) => _executeAction(action, deviceId),
     );
 
     try {
@@ -122,29 +120,21 @@ class RunTaskTool extends McpTool {
     }
   }
 
-  Future<String> _executeAction(
-    PhoneAction action,
-    String deviceId,
-    (int, int)? screenSize,
-  ) {
+  Future<String> _executeAction(PhoneAction action, String deviceId) {
     switch (action) {
       case final DoAction doAction:
-        return _runDoAction(doAction, deviceId, screenSize);
+        return _runDoAction(doAction, deviceId);
       case final FinishAction finishAction:
         return Future.value(finishAction.message);
     }
   }
 
-  Future<String> _runDoAction(
-    DoAction action,
-    String deviceId,
-    (int, int)? screenSize,
-  ) async {
+  Future<String> _runDoAction(DoAction action, String deviceId) async {
     switch (action.action) {
       case 'Tap':
-        return _tap(action, deviceId, screenSize);
+        return _tap(action, deviceId);
       case 'Swipe':
-        return _swipe(action, deviceId, screenSize);
+        return _swipe(action, deviceId);
       case 'Type':
         return _typeText(action, deviceId);
       case 'Launch':
@@ -154,9 +144,9 @@ class RunTaskTool extends McpTool {
       case 'Home':
         return _home(deviceId);
       case 'Long Press':
-        return _longPress(action, deviceId, screenSize);
+        return _longPress(action, deviceId);
       case 'Double Tap':
-        return _doubleTap(action, deviceId, screenSize);
+        return _doubleTap(action, deviceId);
       case 'Wait':
         return _wait(action);
       case 'Take_over':
@@ -168,23 +158,18 @@ class RunTaskTool extends McpTool {
 
   // ── Action implementations ─────────────────────────────────────────────────
 
-  Future<String> _tap(
-    DoAction action,
-    String deviceId,
-    (int, int)? screenSize,
-  ) async {
+  Future<String> _tap(DoAction action, String deviceId) async {
     if (action.element == null || action.element!.length < 2) {
       return 'Error: Tap missing element coordinates';
     }
-    final size = await _resolveSize(deviceId, screenSize);
     _session.sendControlMessage(
       ScrcpyInjectTouchMessage(
         action: 0, // down
         pointerId: 0,
         x: action.element![0],
         y: action.element![1],
-        width: size.$1,
-        height: size.$2,
+        width: _kCoordSpace,
+        height: _kCoordSpace,
       ),
     );
     await Future<void>.delayed(const Duration(milliseconds: 50));
@@ -194,31 +179,26 @@ class RunTaskTool extends McpTool {
         pointerId: 0,
         x: action.element![0],
         y: action.element![1],
-        width: size.$1,
-        height: size.$2,
+        width: _kCoordSpace,
+        height: _kCoordSpace,
       ),
     );
     return 'Tapped at (${action.element![0]}, ${action.element![1]})';
   }
 
-  Future<String> _swipe(
-    DoAction action,
-    String deviceId,
-    (int, int)? screenSize,
-  ) async {
+  Future<String> _swipe(DoAction action, String deviceId) async {
     if (action.start == null ||
         action.end == null ||
         action.start!.length < 2 ||
         action.end!.length < 2) {
       return 'Error: Swipe missing start/end coordinates';
     }
-    final size = await _resolveSize(deviceId, screenSize);
     _session.sendControlMessage(
       ScrcpyInjectScrollMessage(
         x: action.start![0],
         y: action.start![1],
-        width: size.$1,
-        height: size.$2,
+        width: _kCoordSpace,
+        height: _kCoordSpace,
         hScroll: action.end![0] - action.start![0],
         vScroll: action.end![1] - action.start![1],
       ),
@@ -257,23 +237,18 @@ class RunTaskTool extends McpTool {
     return 'Pressed Home';
   }
 
-  Future<String> _longPress(
-    DoAction action,
-    String deviceId,
-    (int, int)? screenSize,
-  ) async {
+  Future<String> _longPress(DoAction action, String deviceId) async {
     if (action.element == null || action.element!.length < 2) {
       return 'Error: Long Press missing coordinates';
     }
-    final size = await _resolveSize(deviceId, screenSize);
     _session.sendControlMessage(
       ScrcpyInjectTouchMessage(
         action: 0, // down
         pointerId: 0,
         x: action.element![0],
         y: action.element![1],
-        width: size.$1,
-        height: size.$2,
+        width: _kCoordSpace,
+        height: _kCoordSpace,
       ),
     );
     await Future<void>.delayed(const Duration(seconds: 1));
@@ -283,24 +258,20 @@ class RunTaskTool extends McpTool {
         pointerId: 0,
         x: action.element![0],
         y: action.element![1],
-        width: size.$1,
-        height: size.$2,
+        width: _kCoordSpace,
+        height: _kCoordSpace,
       ),
     );
     return 'Long pressed at (${action.element![0]}, ${action.element![1]})';
   }
 
-  Future<String> _doubleTap(
-    DoAction action,
-    String deviceId,
-    (int, int)? screenSize,
-  ) async {
+  Future<String> _doubleTap(DoAction action, String deviceId) async {
     if (action.element == null || action.element!.length < 2) {
       return 'Error: Double Tap missing coordinates';
     }
-    await _tap(action, deviceId, screenSize);
+    await _tap(action, deviceId);
     await Future<void>.delayed(const Duration(milliseconds: 100));
-    await _tap(action, deviceId, screenSize);
+    await _tap(action, deviceId);
     return 'Double tapped at (${action.element![0]}, ${action.element![1]})';
   }
 
@@ -314,39 +285,4 @@ class RunTaskTool extends McpTool {
 
   String _takeOver(DoAction action) =>
       'Manual intervention requested: ${action.message ?? 'no details'}';
-
-  // ── Helpers ────────────────────────────────────────────────────────────────
-
-  /// Resolution that touch coordinates are expressed in. Prefer the actual
-  /// screenshot dimensions ([screenSize], read from the PNG the model saw);
-  /// fall back to the device's native resolution via `wm size`. Never the
-  /// scrcpy video resolution — that is maxSize-scaled and does not match the
-  /// screencap coordinate space the model reasons in.
-  Future<(int, int)> _resolveSize(
-    String deviceId,
-    (int, int)? screenSize,
-  ) async => screenSize ?? await _screenSize(deviceId);
-
-  Future<(int, int)> _screenSize(String deviceId) async {
-    final result = await _adb.shell(['wm', 'size'], deviceId: deviceId);
-    final m = RegExp(r'(\d+)x(\d+)').firstMatch(result.stdout as String);
-    if (m != null) {
-      return (int.parse(m.group(1)!), int.parse(m.group(2)!));
-    }
-    return (1080, 1920);
-  }
-
-  /// Reads `(width, height)` from a PNG's IHDR chunk, or null if [bytes] is not
-  /// a PNG. The dimensions are big-endian uint32s at byte offsets 16 and 20,
-  /// right after the 8-byte signature, the 4-byte IHDR length, and the "IHDR"
-  /// tag.
-  static (int, int)? _pngSize(Uint8List bytes) {
-    if (bytes.length < 24) return null;
-    const signature = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
-    for (var i = 0; i < signature.length; i++) {
-      if (bytes[i] != signature[i]) return null;
-    }
-    final bd = ByteData.sublistView(bytes);
-    return (bd.getUint32(16), bd.getUint32(20));
-  }
 }

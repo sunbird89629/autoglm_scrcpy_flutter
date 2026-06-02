@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:mcp_dart/mcp_dart.dart';
 import 'package:scrcpy_client/scrcpy_client.dart';
@@ -19,9 +18,9 @@ class _DoneLlmClient implements LlmClient {
       const LlmResponse(text: 'finish(message="Task done")');
 }
 
-// Records every control message and advertises a *video* resolution that
-// differs from the screenshot, to prove touch coordinates use the screenshot
-// space rather than the (maxSize-scaled) video space.
+// Records every control message and advertises a video resolution, to prove
+// touch coordinates use autoglm-phone's 1000×1000 normalized grid rather than
+// any device/video resolution.
 class _RecordingSession extends MockScrcpySession {
   final sentMessages = <ScrcpyControlMessage>[];
 
@@ -33,17 +32,6 @@ class _RecordingSession extends MockScrcpySession {
   @override
   void sendControlMessage(ScrcpyControlMessage message) =>
       sentMessages.add(message);
-}
-
-// Returns a 1080×2400 PNG (only the IHDR header matters for dimension parsing).
-class _BigScreenshotAdb extends MockAdb {
-  @override
-  Future<Uint8List> takeScreenshot(String deviceId) async => Uint8List.fromList([
-        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
-        0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR length + "IHDR"
-        0x00, 0x00, 0x04, 0x38, // width  = 1080
-        0x00, 0x00, 0x09, 0x60, // height = 2400
-      ]);
 }
 
 // Returns one Tap, then finishes.
@@ -106,12 +94,11 @@ void main() {
       expect(tools.tools.map((t) => t.name), isNot(contains('run_task')));
     });
 
-    test('touch uses screenshot resolution, not scrcpy video resolution',
-        () async {
+    test('touch coordinates use the 1000×1000 normalized grid', () async {
       final session = _RecordingSession();
       final server = ScrcpyMcpServer(
         session: session,
-        adb: _BigScreenshotAdb(),
+        adb: MockAdb(),
         agentConfig: const AgentConfig(maxSteps: 5),
         llmClient: _TapThenFinishLlm(),
       );
@@ -127,12 +114,13 @@ void main() {
 
       final touch =
           session.sentMessages.whereType<ScrcpyInjectTouchMessage>().first;
+      // autoglm-phone emits [0,1000] coordinates; scrcpy scales them against
+      // the frame size. Passing the raw coord with a 1000×1000 frame lands at
+      // x/1000×deviceW. Must NOT be the video resolution (461×1024).
       expect(touch.x, 540);
       expect(touch.y, 1200);
-      // Screenshot is 1080×2400 but video is 461×1024 — the touch frame must
-      // match the screenshot the model saw, otherwise every tap is mis-scaled.
-      expect(touch.width, 1080);
-      expect(touch.height, 2400);
+      expect(touch.width, 1000);
+      expect(touch.height, 1000);
     });
   });
 }
