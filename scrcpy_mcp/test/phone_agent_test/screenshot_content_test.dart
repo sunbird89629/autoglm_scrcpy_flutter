@@ -1,3 +1,6 @@
+@Tags(['real-device'])
+library;
+
 import 'package:adb_tools/adb_tools.dart';
 import 'package:logger_utils/logger_utils.dart';
 import 'package:scrcpy_mcp/scrcpy_mcp.dart';

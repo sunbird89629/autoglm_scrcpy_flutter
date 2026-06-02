@@ -1,3 +1,6 @@
+@Tags(['real-device'])
+library;
+
 import 'dart:convert';
 
 import 'package:adb_tools/adb_tools.dart';
