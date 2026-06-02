@@ -36,13 +36,17 @@ void main() {
     });
 
     test('whitespace-only → throws LlmException', () {
-      expect(() => parseScreenCheckResponse('   \n  '),
-          throwsA(isA<LlmException>()));
+      expect(
+        () => parseScreenCheckResponse('   \n  '),
+        throwsA(isA<LlmException>()),
+      );
     });
 
     test('unparseable prose → throws LlmException', () {
-      expect(() => parseScreenCheckResponse('这个界面看起来像桌面'),
-          throwsA(isA<LlmException>()));
+      expect(
+        () => parseScreenCheckResponse('这个界面看起来像桌面'),
+        throwsA(isA<LlmException>()),
+      );
     });
   });
 
