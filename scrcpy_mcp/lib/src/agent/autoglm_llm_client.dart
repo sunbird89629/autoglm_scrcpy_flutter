@@ -17,10 +17,9 @@ class AutoglmLlmClient implements LlmClient {
   }) : _http = httpClient ?? http.Client();
 
   factory AutoglmLlmClient.fromEnv() => AutoglmLlmClient(
-    baseUrl:
-        Platform.environment['AUTOGLM_BASE_URL'] ?? 'https://open.bigmodel.cn/api/paas/v4',
+    baseUrl: Platform.environment['AUTOGLM_BASE_URL']!,
     apiKey: Platform.environment['AUTOGLM_API_KEY']!,
-    model: Platform.environment['AUTOGLM_MODEL'] ?? 'autoglm-phone',
+    model: Platform.environment['AUTOGLM_MODEL']!,
   );
 
   factory AutoglmLlmClient.fromTest() => AutoglmLlmClient(
@@ -47,7 +46,7 @@ class AutoglmLlmClient implements LlmClient {
     };
     final body = jsonEncode(rawBody);
 
-    _log.infoJson('→ POST $uri', _summarizeBody(rawBody));
+    _log.infoJson('>>>POST $uri', _summarizeBody(rawBody));
 
     final response = await _http.post(
       uri,
@@ -58,7 +57,7 @@ class AutoglmLlmClient implements LlmClient {
       body: body,
     );
 
-    _log.infoJson('← HTTP ${response.statusCode}', response.body);
+    _log.infoJson('<<<HTTP ${response.statusCode}', response.body);
 
     if (response.statusCode != 200) {
       throw LlmException('HTTP ${response.statusCode}: ${response.body}');
