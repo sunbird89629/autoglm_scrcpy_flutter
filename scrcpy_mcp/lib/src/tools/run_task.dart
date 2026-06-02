@@ -251,10 +251,14 @@ class RunTaskTool extends McpTool {
   Future<String> _launch(DoAction action, String deviceId) async {
     if (action.app == null) return 'Error: Launch missing app name';
     final pkg = _appNameToPackage[action.app] ?? action.app!;
-    final result = await _adb.shell(
-      ['monkey', '-p', pkg, '-c', 'android.intent.category.LAUNCHER', '1'],
-      deviceId: deviceId,
-    );
+    final result = await _adb.shell([
+      'monkey',
+      '-p',
+      pkg,
+      '-c',
+      'android.intent.category.LAUNCHER',
+      '1',
+    ], deviceId: deviceId);
     final ok =
         result.exitCode == 0 && !(result.stdout as String).contains('Error');
     return ok ? 'Launched ${action.app} ($pkg)' : 'Failed to launch $pkg';

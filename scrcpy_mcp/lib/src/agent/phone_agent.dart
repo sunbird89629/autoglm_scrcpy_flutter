@@ -3,8 +3,8 @@ import 'agent_config.dart';
 import 'llm_client.dart';
 
 /// Callback that takes a screenshot and returns base64-encoded PNG data.
-typedef ScreenshotProvider = Future<({String base64, String mimeType})>
-Function();
+typedef ScreenshotProvider =
+    Future<({String base64, String mimeType})> Function();
 
 /// Callback that executes one [PhoneAction] on the device.
 typedef ActionRunner = Future<String> Function(PhoneAction action);
@@ -96,9 +96,7 @@ class PhoneAgent {
         // finish(...)/screenshot(...), which ActionParser handles. Reaching
         // here means the output format broke, so report failure instead of
         // masquerading a format error as success.
-        final cleaned = rawText
-            .replaceAll(RegExp('</?think>'), '')
-            .trim();
+        final cleaned = rawText.replaceAll(RegExp('</?think>'), '').trim();
         return AgentResult(
           result: 'Could not parse an action from model output: $cleaned',
           steps: step + 1,
@@ -144,7 +142,8 @@ class PhoneAgent {
     }
 
     return AgentResult(
-      result: 'Max steps (${config.maxSteps}) reached without completing the task.',
+      result:
+          'Max steps (${config.maxSteps}) reached without completing the task.',
       steps: config.maxSteps,
       success: false,
     );

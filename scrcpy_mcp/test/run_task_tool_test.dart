@@ -12,9 +12,7 @@ import 'real_device_test_utils.dart';
 // Fake LLM that immediately completes the task with a finish() action.
 class _DoneLlmClient implements LlmClient {
   @override
-  Future<LlmResponse> chat({
-    required List<LlmMessage> messages,
-  }) async =>
+  Future<LlmResponse> chat({required List<LlmMessage> messages}) async =>
       const LlmResponse(text: 'finish(message="Task done")');
 }
 
@@ -42,8 +40,8 @@ class _TapThenFinishLlm implements LlmClient {
   @override
   Future<LlmResponse> chat({required List<LlmMessage> messages}) async =>
       _i++ == 0
-          ? const LlmResponse(text: 'do(action="Tap", element=[540,1200])')
-          : const LlmResponse(text: 'finish(message="done")');
+      ? const LlmResponse(text: 'do(action="Tap", element=[540,1200])')
+      : const LlmResponse(text: 'finish(message="done")');
 }
 
 // Returns one Type, then finishes.
@@ -52,8 +50,8 @@ class _TypeThenFinishLlm implements LlmClient {
   @override
   Future<LlmResponse> chat({required List<LlmMessage> messages}) async =>
       _i++ == 0
-          ? const LlmResponse(text: 'do(action="Type", text="hello")')
-          : const LlmResponse(text: 'finish(message="done")');
+      ? const LlmResponse(text: 'do(action="Type", text="hello")')
+      : const LlmResponse(text: 'finish(message="done")');
 }
 
 void main() {
@@ -124,8 +122,7 @@ void main() {
         ),
       );
 
-      final touch =
-          session.events.whereType<ScrcpyInjectTouchMessage>().first;
+      final touch = session.events.whereType<ScrcpyInjectTouchMessage>().first;
       // autoglm-phone emits [0,1000] coordinates; scrcpy scales them against
       // the frame size. Passing the raw coord with a 1000×1000 frame lands at
       // x/1000×deviceW. Must NOT be the video resolution (461×1024).
@@ -158,8 +155,9 @@ void main() {
       expect(textIndex, greaterThan(0));
       expect(session.events[textIndex], 'hello');
 
-      final keysBeforeText =
-          session.events.take(textIndex).whereType<ScrcpyInjectKeyMessage>();
+      final keysBeforeText = session.events
+          .take(textIndex)
+          .whereType<ScrcpyInjectKeyMessage>();
       // Ctrl+A select-all (keycode 29 with a Ctrl modifier) then Del (67).
       expect(
         keysBeforeText.any((k) => k.keycode == 29 && k.metastate != 0),

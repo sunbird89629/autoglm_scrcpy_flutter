@@ -122,10 +122,15 @@ Future<String> _swipe(
   }
   final (x1, y1) = _toPx(action.start!, size);
   final (x2, y2) = _toPx(action.end!, size);
-  await adb.shell(
-    ['input', 'swipe', '$x1', '$y1', '$x2', '$y2', '300'],
-    deviceId: _deviceId,
-  );
+  await adb.shell([
+    'input',
+    'swipe',
+    '$x1',
+    '$y1',
+    '$x2',
+    '$y2',
+    '300',
+  ], deviceId: _deviceId);
   return 'Swiped ($x1,$y1) → ($x2,$y2)';
 }
 
@@ -135,10 +140,12 @@ Future<String> _typeText(ScrcpyMcpAdb adb, DoAction action) async {
   // text is appended onto existing content (e.g. a stale URL in the omnibox).
   // NB: `input keyevent KEYCODE_CTRL_A` is a no-op (not a real keycode); the
   // chord must go through `input keycombination`.
-  await adb.shell(
-    ['input', 'keycombination', 'KEYCODE_CTRL_LEFT', 'KEYCODE_A'],
-    deviceId: _deviceId,
-  );
+  await adb.shell([
+    'input',
+    'keycombination',
+    'KEYCODE_CTRL_LEFT',
+    'KEYCODE_A',
+  ], deviceId: _deviceId);
   await adb.shell(['input', 'keyevent', 'KEYCODE_DEL'], deviceId: _deviceId);
   // `adb shell input text` treats spaces specially (use %s) and only handles
   // ASCII; fine for the URL this test types.
@@ -181,10 +188,15 @@ Future<String> _longPress(
   }
   // A long press is a zero-distance swipe held for ~800ms.
   final (px, py) = _toPx(action.element!, size);
-  await adb.shell(
-    ['input', 'swipe', '$px', '$py', '$px', '$py', '800'],
-    deviceId: _deviceId,
-  );
+  await adb.shell([
+    'input',
+    'swipe',
+    '$px',
+    '$py',
+    '$px',
+    '$py',
+    '800',
+  ], deviceId: _deviceId);
   return 'Long pressed ($px, $py)';
 }
 

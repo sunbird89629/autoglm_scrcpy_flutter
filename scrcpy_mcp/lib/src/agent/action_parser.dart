@@ -71,8 +71,10 @@ class ActionParser {
     }
 
     // 3. do(action="...", ...)
-    final doMatch = RegExp(r'do\s*\((.*)\)', dotAll: true)
-        .firstMatch(effectiveText);
+    final doMatch = RegExp(
+      r'do\s*\((.*)\)',
+      dotAll: true,
+    ).firstMatch(effectiveText);
     if (doMatch != null) {
       return _parseDoArgs(doMatch.group(1)!);
     }
@@ -131,8 +133,9 @@ class ActionParser {
           }
         }
         // String: "value" or key="value"
-        final strMatch = RegExp(r'^(?:\w+\s*=\s*)?\"((?:[^"\\]|\\.)*)\"$')
-            .firstMatch(trimmed);
+        final strMatch = RegExp(
+          r'^(?:\w+\s*=\s*)?\"((?:[^"\\]|\\.)*)\"$',
+        ).firstMatch(trimmed);
         if (strMatch != null) {
           args.add(_unescape(strMatch.group(1)!));
           continue;
@@ -195,14 +198,16 @@ class ActionParser {
       case 'Wait':
         return DoAction(
           action: 'Wait',
-          duration:
-              args.isNotEmpty && args[0] is String ? args[0] as String : null,
+          duration: args.isNotEmpty && args[0] is String
+              ? args[0] as String
+              : null,
         );
       case 'Take_over':
         return DoAction(
           action: 'Take_over',
-          message:
-              args.isNotEmpty && args[0] is String ? args[0] as String : null,
+          message: args.isNotEmpty && args[0] is String
+              ? args[0] as String
+              : null,
         );
       case 'Back':
         return const DoAction(action: 'Back');
@@ -252,8 +257,9 @@ class ActionParser {
   }
 
   static String? _extractString(String text, String key) {
-    final match = RegExp('$key\\s*=\\s*"((?:[^"\\\\]|\\\\.)*)"')
-        .firstMatch(text);
+    final match = RegExp(
+      '$key\\s*=\\s*"((?:[^"\\\\]|\\\\.)*)"',
+    ).firstMatch(text);
     return match != null ? _unescape(match.group(1)!) : null;
   }
 

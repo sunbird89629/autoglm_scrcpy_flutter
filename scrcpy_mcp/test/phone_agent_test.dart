@@ -8,9 +8,7 @@ class _FakeLlmClient implements LlmClient {
   int _i = 0;
 
   @override
-  Future<LlmResponse> chat({
-    required List<LlmMessage> messages,
-  }) async =>
+  Future<LlmResponse> chat({required List<LlmMessage> messages}) async =>
       _responses[_i++];
 }
 
@@ -21,9 +19,7 @@ class _CapturingLlmClient implements LlmClient {
   int _i = 0;
 
   @override
-  Future<LlmResponse> chat({
-    required List<LlmMessage> messages,
-  }) async {
+  Future<LlmResponse> chat({required List<LlmMessage> messages}) async {
     capturedMessages.add(List.from(messages));
     return _responses[_i++];
   }
@@ -43,13 +39,12 @@ void main() {
       List<LlmResponse> responses, {
       ActionRunner? actionRunner,
       int maxSteps = 10,
-    }) =>
-        PhoneAgent(
-          config: AgentConfig(maxSteps: maxSteps),
-          llmClient: _FakeLlmClient(responses),
-          takeScreenshot: _fakeScreenshot,
-          actionRunner: actionRunner ?? (_) async => 'ok',
-        );
+    }) => PhoneAgent(
+      config: AgentConfig(maxSteps: maxSteps),
+      llmClient: _FakeLlmClient(responses),
+      takeScreenshot: _fakeScreenshot,
+      actionRunner: actionRunner ?? (_) async => 'ok',
+    );
 
     test('returns failure when LLM output has no parseable action', () async {
       final result = await makeAgent([
@@ -138,8 +133,7 @@ void main() {
       // Last call (the finish step) carries 5 prior user screenshots, but only
       // the 2 most recent should retain their image.
       final lastCall = capturingFake.capturedMessages.last;
-      final withImages =
-          lastCall.where((m) => m.imageBase64 != null).toList();
+      final withImages = lastCall.where((m) => m.imageBase64 != null).toList();
       expect(withImages.length, 2);
       // The retained images are the two most recent frames.
       expect(withImages.map((m) => m.imageBase64), ['frame-3', 'frame-4']);
@@ -152,31 +146,30 @@ void main() {
       expect(staleUserMsgs.first.textContent, contains('历史截图已省略'));
     });
 
-    test('aborts when the screen is unchanged for stallThreshold steps',
-        () async {
-      // Model keeps guessing taps; the fake screenshot never changes.
-      final result = await makeAgent(
-        List.generate(
-          8,
-          (_) => const LlmResponse(
-            text: 'do(action="Tap", element=[499,577])',
+    test(
+      'aborts when the screen is unchanged for stallThreshold steps',
+      () async {
+        // Model keeps guessing taps; the fake screenshot never changes.
+        final result = await makeAgent(
+          List.generate(
+            8,
+            (_) =>
+                const LlmResponse(text: 'do(action="Tap", element=[499,577])'),
           ),
-        ),
-      ).run('dismiss a dialog that will not move');
+        ).run('dismiss a dialog that will not move');
 
-      expect(result.success, isFalse);
-      expect(result.result, contains('unchanged'));
-      // stallThreshold defaults to 3: aborts at step index 3 → 4 steps.
-      expect(result.steps, 4);
-    });
+        expect(result.success, isFalse);
+        expect(result.result, contains('unchanged'));
+        // stallThreshold defaults to 3: aborts at step index 3 → 4 steps.
+        expect(result.steps, 4);
+      },
+    );
 
     test('returns failure when max steps reached', () async {
       final result = await makeAgent(
         List.generate(
           3,
-          (_) => const LlmResponse(
-            text: 'do(action="Tap", element=[500,300])',
-          ),
+          (_) => const LlmResponse(text: 'do(action="Tap", element=[500,300])'),
         ),
         maxSteps: 3,
       ).run('impossible task');
@@ -260,9 +253,7 @@ void main() {
 
   group('ActionParser', () {
     test('parses do() with keywords', () {
-      final action = ActionParser.parse(
-        'do(action="Tap", element=[500, 300])',
-      );
+      final action = ActionParser.parse('do(action="Tap", element=[500, 300])');
       expect(action, isA<DoAction>());
       final doAction = action! as DoAction;
       expect(doAction.action, 'Tap');
