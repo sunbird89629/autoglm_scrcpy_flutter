@@ -83,10 +83,14 @@ void main() {
 
     setUp(() async {
       if (realDevices.isEmpty) return;
+      // Select-all then delete to clear the field. NB: `input keyevent
+      // KEYCODE_CTRL_A` is a no-op (not a real keycode) — the chord must go
+      // through `input keycombination`.
       await adb.shell([
         'input',
-        'keyevent',
-        'KEYCODE_CTRL_A',
+        'keycombination',
+        'KEYCODE_CTRL_LEFT',
+        'KEYCODE_A',
       ], deviceId: realDevices.first);
       await adb.shell([
         'input',
@@ -131,7 +135,11 @@ void main() {
         expect(textResult.isError, isFalse, reason: textContent(textResult));
 
         await Future<void>.delayed(const Duration(milliseconds: 300));
-        expect(await uiautomatorText(), contains(text));
+        final dump = await uiautomatorText();
+        expect(dump, contains(text));
+        // Field was cleared in setUp, so the text must appear exactly once —
+        // catches the Type/inject duplication regression.
+        expect(dump, isNot(contains('$text$text')));
       },
       timeout: const Timeout(Duration(seconds: 60)),
     );
@@ -151,7 +159,9 @@ void main() {
         expect(textResult.isError, isFalse, reason: textContent(textResult));
 
         await Future<void>.delayed(const Duration(milliseconds: 300));
-        expect(await uiautomatorText(), contains(text));
+        final dump = await uiautomatorText();
+        expect(dump, contains(text));
+        expect(dump, isNot(contains('$text$text')));
       },
       timeout: const Timeout(Duration(seconds: 60)),
     );
