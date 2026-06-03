@@ -207,6 +207,37 @@ void main() {
       },
     );
 
+    test('aborts when the same action repeats too many times', () async {
+      // Distinct screenshot per step so the screen-unchanged stall never fires;
+      // only the action-repeat backstop can catch this loop (like scrolling a
+      // list forever with an identical Swipe).
+      var shot = 0;
+      Future<({String base64, String mimeType})> distinctScreenshot() async =>
+          (base64: 'frame-${shot++}', mimeType: 'image/png');
+
+      final agent = PhoneAgent(
+        config: const AgentConfig(maxSteps: 30),
+        llmClient: _FakeLlmClient(
+          List.generate(
+            30,
+            (_) => const LlmResponse(
+              text: 'do(action="Swipe", start=[499,614], end=[499,263])',
+            ),
+          ),
+        ),
+        takeScreenshot: distinctScreenshot,
+        actionRunner: (_) async => 'ok',
+      );
+
+      final result = await agent.run('scroll forever');
+
+      expect(result.success, isFalse);
+      expect(result.result, contains('repeated the same action'));
+      // repeatedActionThreshold defaults to 10 → aborts at the 10th identical
+      // action (above a reasonable scroll budget, so bounded scrolling is safe).
+      expect(result.steps, 10);
+    });
+
     test('returns failure when max steps reached', () async {
       final result = await makeAgent(
         List.generate(

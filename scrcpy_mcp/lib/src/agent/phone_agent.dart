@@ -60,6 +60,8 @@ class PhoneAgent {
     String? prevScreenshot;
     var stalledSteps = 0;
     String? lastResult;
+    String? lastActionSig;
+    var repeatedActions = 0;
 
     for (var step = 0; step < config.maxSteps; step++) {
       // 1. Take screenshot
@@ -150,6 +152,25 @@ class PhoneAgent {
             );
           }
 
+          // Action-repeat backstop: the screen-unchanged check above misses
+          // loops where the screen keeps changing but the agent never converges
+          // (e.g. scrolling a long list forever with an identical Swipe). Abort
+          // when the exact same action repeats too many times. The threshold is
+          // looser than stallThreshold because some repetition (scrolling) is
+          // legitimate.
+          final sig = _actionSignature(action);
+          repeatedActions = sig == lastActionSig ? repeatedActions + 1 : 1;
+          lastActionSig = sig;
+          if (repeatedActions >= config.repeatedActionThreshold) {
+            return AgentResult(
+              result:
+                  'Aborted: repeated the same action $repeatedActions times '
+                  'without completing the task: $action',
+              steps: step + 1,
+              success: false,
+            );
+          }
+
           String result;
           try {
             result = await actionRunner(action);
@@ -181,6 +202,11 @@ class PhoneAgent {
       success: false,
     );
   }
+
+  /// A stable identity for a [DoAction], used to detect consecutive repeats.
+  static String _actionSignature(DoAction a) =>
+      '${a.action}|${a.element}|${a.start}|${a.end}|${a.text}|${a.app}'
+      '|${a.duration}';
 
   /// Returns a copy of [messages] keeping only the [AgentConfig.keepScreenshots]
   /// most recent screenshots. autoglm-phone has a 20K-token context window and

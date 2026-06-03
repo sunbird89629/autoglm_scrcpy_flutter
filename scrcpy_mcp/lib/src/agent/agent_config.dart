@@ -71,6 +71,7 @@ class AgentConfig {
     this.systemPrompt = _kDefaultSystemPrompt,
     this.keepScreenshots = 3,
     this.stallThreshold = 3,
+    this.repeatedActionThreshold = 10,
   });
 
   factory AgentConfig.fromEnv() => AgentConfig(
@@ -92,6 +93,13 @@ class AgentConfig {
   /// consecutive steps — actions are having no visible effect. Acts as a
   /// backstop for the model failing to self-detect a stall.
   final int stallThreshold;
+
+  /// Abort when the exact same action repeats this many consecutive times — a
+  /// loop where the screen keeps changing but the agent never converges (e.g.
+  /// scrolling a long list forever). Much looser than [stallThreshold]: some
+  /// repetition (scrolling through a list) is legitimate, so this must sit above
+  /// any reasonable scroll budget a task prompt allows.
+  final int repeatedActionThreshold;
 }
 
 class AgentResult {
