@@ -6,8 +6,6 @@ import 'package:mcp_dart/mcp_dart.dart' hide Logger;
 import 'package:scrcpy_client/scrcpy_client.dart';
 import 'package:scrcpy_mcp/scrcpy_mcp.dart';
 
-final moduleLogger = Logger('scrcpy_mcp');
-
 void main(List<String> args) async {
   initLogging();
   final adbPath = args.isNotEmpty ? args[0] : 'adb';

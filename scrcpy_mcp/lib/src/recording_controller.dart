@@ -4,7 +4,7 @@ import 'package:logger_utils/logger_utils.dart';
 
 import 'recording_adb.dart';
 
-final _log = Logger('scrcpy.recording');
+final _log = Logger('scrcpy.mcp.recording');
 
 class RecordingController {
   RecordingController(this._adb);

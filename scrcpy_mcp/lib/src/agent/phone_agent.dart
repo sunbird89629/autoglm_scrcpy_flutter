@@ -5,7 +5,7 @@ import 'action_parser.dart';
 import 'agent_config.dart';
 import 'llm_client.dart';
 
-final _log = Logger('PhoneAgent');
+final _log = Logger('scrcpy.mcp.agent');
 
 /// Callback that takes a screenshot and returns base64-encoded PNG data.
 typedef ScreenshotProvider =

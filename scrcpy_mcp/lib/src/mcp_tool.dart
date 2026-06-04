@@ -2,7 +2,7 @@ import 'package:logger_utils/logger_utils.dart';
 import 'package:mcp_dart/mcp_dart.dart' hide Logger;
 import 'package:scrcpy_client/scrcpy_client.dart';
 
-final _baseLogger = Logger('scrcpy.mcp');
+final _log = Logger('scrcpy.mcp.tool');
 
 /// Base contract for all MCP tool implementations.
 ///
@@ -24,21 +24,21 @@ abstract class McpTool {
   /// ```dart
   /// logger.fine('rescaled ($x,$y) → ($rx,$ry)');
   /// ```
-  Logger get logger => _baseLogger;
+  Logger get logger => _log;
 
   Future<CallToolResult> call(
     Map<String, dynamic> args,
     RequestHandlerExtra extra,
   ) async {
-    _baseLogger.info('$name ← $args');
+    _log.info('$name ← $args');
     final sw = Stopwatch()..start();
     final result = await execute(args, extra);
     final ms = sw.elapsedMilliseconds;
     final summary = _summarizeResult(result);
     if (result.isError == true) {
-      _baseLogger.warning('$name → ${ms}ms | ERROR | $summary');
+      _log.warning('$name → ${ms}ms | ERROR | $summary');
     } else {
-      _baseLogger.info('$name → ${ms}ms | $summary');
+      _log.info('$name → ${ms}ms | $summary');
     }
     return result;
   }
