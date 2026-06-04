@@ -26,8 +26,11 @@ const _task = '''
    按时间从近到远排列。如果一条记录都没收集到，也用 finish 说明原因。
 
 注意：
+- ⚠️ 绝对不要点击历史列表里的任何视频条目——点击会直接开始播放视频，导致偏离任务。只用 Swipe 滚动浏览，用眼睛读取并在 think 中记录文字信息，全程不要 Tap 列表中的视频。
+- 如果不小心进入了视频播放页或 Shorts 页，立即用 Back 返回，必要时点击左上角返回箭头回到历史列表。
 - 如果 YouTube 未登录或历史记录功能被关闭，无法获取历史，请用 Take_over 请求人工协助或在 finish 中说明原因。
 - 如果某条记录看不清观看日期，用其所在的日期分组标题作为观看日期。
+- 如果截图全黑或提示敏感屏幕，先 Wait 一次再重试，不要把黑屏当作真实页面。
 ''';
 
 void main() {
@@ -44,8 +47,8 @@ void main() {
       final result = await runAgentTask(
         adb: adb,
         task: _task,
-        // History tasks need many scroll + record steps.
-        maxSteps: 25,
+        // History tasks spend many steps just navigating in + scrolling.
+        maxSteps: 40,
       );
 
       _log.info(
@@ -56,6 +59,6 @@ void main() {
       // could not be produced). Content is inspected from the logged result.
       expect(result.result, isNotEmpty);
     },
-    timeout: const Timeout(Duration(minutes: 8)),
+    timeout: const Timeout(Duration(minutes: 12)),
   );
 }
