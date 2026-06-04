@@ -105,7 +105,7 @@ class PhoneAgent {
       messages.add(llmMessage);
       var response = await llmClient.chat(messages: _trimHistory(messages));
       var rawText = response.text ?? '';
-      _log.info('rawText:$rawText');
+      _log.fine('rawText:$rawText');
       var action = rawText.isEmpty ? null : ActionParser.parse(rawText);
 
       // Recover from a truncated response: finish_reason="length" means the
@@ -122,7 +122,7 @@ class PhoneAgent {
         );
         response = await llmClient.chat(messages: _trimHistory(messages));
         rawText = response.text ?? '';
-        _log.info('rawText(retry):$rawText');
+        _log.fine('rawText(retry):$rawText');
         action = rawText.isEmpty ? null : ActionParser.parse(rawText);
       }
 
@@ -265,7 +265,7 @@ class MessageList extends DelegatingList<LlmMessage> {
   MessageList(super.base);
   @override
   void add(LlmMessage value) {
-    _log.info(value.toLog());
+    _log.fine(value.toLog());
     super.add(value);
   }
 }

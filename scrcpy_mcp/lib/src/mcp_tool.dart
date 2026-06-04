@@ -30,7 +30,7 @@ abstract class McpTool {
     Map<String, dynamic> args,
     RequestHandlerExtra extra,
   ) async {
-    _log.info('$name ← $args');
+    _log.info('$name ← ${truncate(args.toString(), 200)}');
     final sw = Stopwatch()..start();
     final result = await execute(args, extra);
     final ms = sw.elapsedMilliseconds;
