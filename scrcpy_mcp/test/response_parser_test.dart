@@ -104,5 +104,22 @@ void main() {
       expect(parsed, isA<ParseFailure>());
       expect((parsed as ParseFailure).reason, contains('malformed do()'));
     });
+
+    test('no think/answer tags: think is empty, content is the action', () {
+      final parsed = ResponseParser.parse('do(action="Back")');
+      expect(parsed, isA<ParsedAction>());
+      expect(parsed.think, '');
+      expect(parsed.content, 'do(action="Back")');
+    });
+
+    test('handles <think> and <answer> together', () {
+      final parsed = ResponseParser.parse(
+        '<think>推理</think>\n<answer>do(action="Tap", element=[5, 6])</answer>',
+      );
+      expect(parsed, isA<ParsedAction>());
+      expect(parsed.think, '推理');
+      final a = (parsed as ParsedAction).action as DoAction;
+      expect(a.element, [5, 6]);
+    });
   });
 }

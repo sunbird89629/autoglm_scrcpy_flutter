@@ -70,7 +70,7 @@ class ResponseParser {
 
     // do(action="…", …)
     final hasDo = RegExp(
-      r'do\s*\(',
+      r'(?<![a-zA-Z])do\s*\(',
       dotAll: true,
     ).hasMatch(content);
     if (hasDo) {
@@ -93,8 +93,8 @@ class ResponseParser {
   }
 
   /// Splits the raw reply into `(think, content)`: pulls the `<think></think>`
-  /// block out as think and, if present, unwraps `<answer></answer>` in the
-  /// remainder. content is the remainder with the think block removed.
+  /// block out as `think`, and in the remainder unwraps `<answer></answer>` if
+  /// present. `content` is that remainder, trimmed.
   static (String think, String content) _split(String text) {
     var think = '';
     final thinkMatch = RegExp(
@@ -150,12 +150,13 @@ class ResponseParser {
   /// Extracts a free-text field: everything after `key="` to the end of the
   /// call, stripping a trailing `")` (or lone `"`). Assumes the free-text field
   /// is the last argument of the `do(...)` call (true for autoglm output), which
-  /// lets unescaped inner quotes pass through unharmed. Returns null if absent.
+  /// lets unescaped inner quotes pass through unharmed. The key must sit at an
+  /// argument boundary (after `(` or `,`) so it can't prefix-match a longer key
+  /// such as `subtext`. Returns null if absent.
   static String? _extractFreeText(String content, String key) {
-    final marker = '$key="';
-    final idx = content.indexOf(marker);
-    if (idx == -1) return null;
-    var rest = content.substring(idx + marker.length).trimRight();
+    final match = RegExp('[(,]\\s*$key\\s*=\\s*"').firstMatch(content);
+    if (match == null) return null;
+    var rest = content.substring(match.end).trimRight();
     if (rest.endsWith('")')) {
       rest = rest.substring(0, rest.length - 2);
     } else if (rest.endsWith('"')) {
@@ -168,12 +169,13 @@ class ResponseParser {
     final match =
         RegExp('$key\\s*=\\s*\\[([^\\]]*)\\]').firstMatch(content);
     if (match == null) return null;
-    return match
+    final ints = match
         .group(1)!
         .split(',')
         .map((s) => int.tryParse(s.trim()))
         .whereType<int>()
         .toList();
+    return ints.isEmpty ? null : ints;
   }
 
   static String _unescape(String s) =>
