@@ -1,7 +1,40 @@
-import 'action_parser.dart';
+/// Represents a single action the autoglm-phone model wants to execute.
+sealed class PhoneAction {
+  const PhoneAction();
+}
 
-// PhoneAction 类型暂留在 action_parser.dart，Task 3 再迁入本文件。
-export 'action_parser.dart' show DoAction, FinishAction, PhoneAction;
+final class DoAction extends PhoneAction {
+  const DoAction({
+    required this.action,
+    this.element,
+    this.start,
+    this.end,
+    this.text,
+    this.app,
+    this.duration,
+    this.message,
+  });
+
+  final String action;
+  final List<int>? element; // [x, y]
+  final List<int>? start; // [x, y]
+  final List<int>? end; // [x, y]
+  final String? text;
+  final String? app;
+  final String? duration;
+  final String? message;
+
+  @override
+  String toString() => 'DoAction($action)';
+}
+
+final class FinishAction extends PhoneAction {
+  const FinishAction(this.message);
+  final String message;
+
+  @override
+  String toString() => 'FinishAction($message)';
+}
 
 /// Structured result of parsing one autoglm-phone model reply.
 sealed class ParsedResponse {
