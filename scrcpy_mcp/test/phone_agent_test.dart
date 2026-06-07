@@ -328,6 +328,31 @@ void main() {
       expect(result.steps, 1);
     });
 
+    test('injects memory into user messages', () async {
+      final capturingFake = _CapturingLlmClient([
+        const LlmResponse(
+          text:
+              '<think>t</think><memory>视频1: A - 1万</memory>do(action="Tap", element=[1,2])',
+        ),
+        const LlmResponse(text: 'finish(message="done")'),
+      ]);
+
+      final agent = PhoneAgent(
+        config: const AgentConfig(maxSteps: 5),
+        llmClient: capturingFake,
+        takeScreenshot: _fakeScreenshot,
+        actionRunner: (_) async => 'ok',
+      );
+
+      await agent.run('collect videos');
+
+      // The second call's user message (step 0's feedback) should carry the memory.
+      final secondCall = capturingFake.capturedMessages[1];
+      final lastUser = secondCall.lastWhere((m) => m.role == 'user');
+      expect(lastUser.textContent, contains('跨步记录'));
+      expect(lastUser.textContent, contains('视频1: A - 1万'));
+    });
+
   });
 
   group('actionSummary', () {

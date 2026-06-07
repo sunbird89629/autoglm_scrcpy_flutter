@@ -48,6 +48,7 @@ class PhoneAgent {
   Future<AgentResult> run(String message) async {
     _log.info('task: $message');
     final messages = _buildInitialMessages();
+    final memories = <String>[];
 
     String? prevScreenshot;
     var stalledSteps = 0;
@@ -71,7 +72,7 @@ class PhoneAgent {
       }
 
       // 2. Ask the model for the next action (handles truncation retry).
-      final userContent = _buildUserContent(step, message, lastResult);
+      final userContent = _buildUserContent(step, message, lastResult, memories);
       final parsed = await _requestAction(
         messages,
         userContent: userContent,
@@ -90,11 +91,12 @@ class PhoneAgent {
             steps: step + 1,
             success: false,
           );
-        case ParsedAction(:final action, :final content):
+        case ParsedAction(:final action, :final content, :final memory):
           _log.info('step $step  ${actionSummary(action)}');
           _log.fine('reply:\n${_indent(content)}');
           // Record the assistant turn (content already excludes <think>).
           messages.add(LlmMessage(role: 'assistant', textContent: content));
+          if (memory.isNotEmpty) memories.add(memory);
           final outcome = await _dispatchAction(
             action,
             step,
@@ -154,10 +156,15 @@ class PhoneAgent {
   /// the model outcome feedback to self-correct, and — because the text varies
   /// each step — avoids the low-temperature repetition collapse that a fixed
   /// "继续执行任务" can trigger.
-  String _buildUserContent(int step, String message, String? lastResult) =>
-      step == 0
-      ? message
-      : '上一步操作结果：${lastResult ?? '已执行'}。请对照当前截图判断是否生效，并继续完成任务。';
+  String _buildUserContent(int step, String message, String? lastResult,
+      List<String> memories) {
+    if (step == 0) return message;
+    final memoryBlock = memories.isEmpty
+        ? ''
+        : '跨步记录：\n---\n${memories.join('\n---\n')}\n---\n';
+    return '$memoryBlock'
+        '上一步操作结果：${lastResult ?? '已执行'}。请对照当前截图判断是否生效，并继续完成任务。';
+  }
 
   /// Sends a user turn (text + screenshot) and parses the model's reply into a
   /// [ParsedResponse]. On a truncated response (finish_reason="length", usually
