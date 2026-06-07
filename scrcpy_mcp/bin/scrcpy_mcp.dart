@@ -21,7 +21,7 @@ void main(List<String> args) async {
     adb: scrcpyAdb,
     recordingAdb: scrcpyAdb,
     agentConfig: AgentConfig(),
-    llmClient: llmClient,
+    llmClient: llmClient.chat,
   );
 
   final transport = StdioServerTransport();

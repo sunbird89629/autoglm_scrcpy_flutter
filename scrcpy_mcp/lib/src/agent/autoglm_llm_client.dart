@@ -8,7 +8,7 @@ import 'llm_client.dart';
 
 final _log = Logger('scrcpy.mcp.llm');
 
-class AutoglmLlmClient implements LlmClient {
+class AutoglmLlmClient {
   AutoglmLlmClient({
     required this.baseUrl,
     required this.apiKey,
@@ -33,7 +33,6 @@ class AutoglmLlmClient implements LlmClient {
   final String model;
   final http.Client _http;
 
-  @override
   Future<LlmResponse> chat({required List<LlmMessage> messages}) async {
     final uri = Uri.parse('$baseUrl/chat/completions');
     final rawBody = {

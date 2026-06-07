@@ -48,7 +48,7 @@ void main() {
 
       // Verify the agent actually reached the Twitter homepage.
       final check = await checkDeviceScreenContains(
-        client: AutoglmLlmClient.fromTest(),
+        chat: AutoglmLlmClient.fromTest().chat,
         adb: adb,
         deviceId: deviceId,
         expectation: 'Twitter（X）的主页',

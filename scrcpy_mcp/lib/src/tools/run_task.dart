@@ -43,7 +43,7 @@ const _appNameToPackage = {
 class RunTaskTool extends McpTool {
   RunTaskTool({
     required AgentConfig config,
-    required LlmClient llmClient,
+    required ChatFn llmClient,
     required ScrcpyAdb adb,
     required ScrcpySession session,
     required SessionContext ctx,
@@ -54,7 +54,7 @@ class RunTaskTool extends McpTool {
        _ctx = ctx;
 
   final AgentConfig _config;
-  final LlmClient _llmClient;
+  final ChatFn _llmClient;
   final ScrcpyAdb _adb;
   final ScrcpySession _session;
   final SessionContext _ctx;

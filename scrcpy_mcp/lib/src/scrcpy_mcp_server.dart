@@ -39,7 +39,7 @@ class ScrcpyMcpServer {
     required ScrcpyAdb adb,
     RecordingAdb? recordingAdb,
     AgentConfig? agentConfig,
-    LlmClient? llmClient,
+    ChatFn? llmClient,
   }) : _session = session,
        _adb = adb,
        _agentConfig = agentConfig,
@@ -65,7 +65,7 @@ class ScrcpyMcpServer {
   final ScrcpyAdb _adb;
   final SessionContext _ctx;
   final AgentConfig? _agentConfig;
-  final LlmClient? _llmClient;
+  final ChatFn? _llmClient;
   late final McpServer _mcpServer;
   RecordingController? _recordingController;
 
@@ -106,11 +106,12 @@ class ScrcpyMcpServer {
     ];
 
     // Agent tool — only when both config and client are provided.
-    if (_agentConfig != null && _llmClient != null) {
+    final llmClient = _llmClient;
+    if (_agentConfig != null && llmClient != null) {
       tools.add(
         RunTaskTool(
           config: _agentConfig,
-          llmClient: _llmClient,
+          llmClient: llmClient,
           adb: _adb,
           session: _session,
           ctx: _ctx,

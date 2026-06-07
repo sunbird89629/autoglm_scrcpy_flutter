@@ -17,7 +17,7 @@ class McpHttpServer {
     required ScrcpyAdb adb,
     RecordingAdb? recordingAdb,
     AgentConfig? agentConfig,
-    LlmClient? llmClient,
+    ChatFn? llmClient,
   }) async {
     _server = StreamableMcpServer(
       serverFactory: (_) => ScrcpyMcpServer(

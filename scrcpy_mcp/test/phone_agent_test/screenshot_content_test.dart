@@ -16,10 +16,10 @@ void main() {
     () async {
       initLogging();
       final adb = ScrcpyMcpAdb(AdbClient());
-      final client = AutoglmLlmClient.fromTest();
+      final chat = AutoglmLlmClient.fromTest().chat;
 
       final r = await checkDeviceScreenContains(
-        client: client,
+        chat: chat,
         adb: adb,
         deviceId: _deviceId,
         expectation: '应用图标',
@@ -36,11 +36,11 @@ void main() {
     () async {
       initLogging();
       final adb = ScrcpyMcpAdb(AdbClient());
-      final client = AutoglmLlmClient.fromTest();
+      final chat = AutoglmLlmClient.fromTest().chat;
 
       // Desktop should not contain a calculator app specifically.
       final r = await checkDeviceScreenContains(
-        client: client,
+        chat: chat,
         adb: adb,
         deviceId: _deviceId,
         expectation: '计算器',

@@ -9,11 +9,24 @@ import 'package:test/test.dart';
 
 import 'real_device_test_utils.dart';
 
-// Fake LLM that immediately completes the task with a finish() action.
-class _DoneLlmClient implements LlmClient {
-  @override
-  Future<LlmResponse> chat({required List<LlmMessage> messages}) async =>
-      const LlmResponse(text: 'finish(message="Task done")');
+// Fake chat that immediately completes the task with a finish() action.
+Future<LlmResponse> _doneChat({required List<LlmMessage> messages}) async =>
+    const LlmResponse(text: 'finish(message="Task done")');
+
+// Returns one Tap, then finishes.
+ChatFn _tapThenFinishChat() {
+  var i = 0;
+  return ({required List<LlmMessage> messages}) async => i++ == 0
+      ? const LlmResponse(text: 'do(action="Tap", element=[540,1200])')
+      : const LlmResponse(text: 'finish(message="done")');
+}
+
+// Returns one Type, then finishes.
+ChatFn _typeThenFinishChat() {
+  var i = 0;
+  return ({required List<LlmMessage> messages}) async => i++ == 0
+      ? const LlmResponse(text: 'do(action="Type", text="hello")')
+      : const LlmResponse(text: 'finish(message="done")');
 }
 
 // Records an ordered log of control messages (ScrcpyControlMessage) and
@@ -34,26 +47,6 @@ class _RecordingSession extends MockScrcpySession {
   void injectText(String text) => events.add(text);
 }
 
-// Returns one Tap, then finishes.
-class _TapThenFinishLlm implements LlmClient {
-  int _i = 0;
-  @override
-  Future<LlmResponse> chat({required List<LlmMessage> messages}) async =>
-      _i++ == 0
-      ? const LlmResponse(text: 'do(action="Tap", element=[540,1200])')
-      : const LlmResponse(text: 'finish(message="done")');
-}
-
-// Returns one Type, then finishes.
-class _TypeThenFinishLlm implements LlmClient {
-  int _i = 0;
-  @override
-  Future<LlmResponse> chat({required List<LlmMessage> messages}) async =>
-      _i++ == 0
-      ? const LlmResponse(text: 'do(action="Type", text="hello")')
-      : const LlmResponse(text: 'finish(message="done")');
-}
-
 void main() {
   group('run_task tool', () {
     late McpClient client;
@@ -64,7 +57,7 @@ void main() {
         session: MockScrcpySession(),
         adb: MockAdb(),
         agentConfig: const AgentConfig(maxSteps: 5),
-        llmClient: _DoneLlmClient(),
+        llmClient: _doneChat,
       );
       (client, close) = await connectMcpPair(server);
     });
@@ -110,7 +103,7 @@ void main() {
         session: session,
         adb: MockAdb(),
         agentConfig: const AgentConfig(maxSteps: 5),
-        llmClient: _TapThenFinishLlm(),
+        llmClient: _tapThenFinishChat(),
       );
       final (c, closeFn) = await connectMcpPair(server);
       addTearDown(closeFn);
@@ -138,7 +131,7 @@ void main() {
         session: session,
         adb: MockAdb(),
         agentConfig: const AgentConfig(maxSteps: 5),
-        llmClient: _TypeThenFinishLlm(),
+        llmClient: _typeThenFinishChat(),
       );
       final (c, closeFn) = await connectMcpPair(server);
       addTearDown(closeFn);

@@ -31,7 +31,7 @@ class PhoneAgent {
   });
 
   final AgentConfig config;
-  final LlmClient llmClient;
+  final ChatFn llmClient;
   final ScreenshotProvider takeScreenshot;
   final ActionRunner actionRunner;
 
@@ -185,7 +185,7 @@ class PhoneAgent {
       ),
     );
     final trimmedHistory = _trimHistory(messages);
-    var response = await llmClient.chat(messages: trimmedHistory);
+    var response = await llmClient(messages: trimmedHistory);
     var parsed = ResponseParser.parse(response.text ?? '');
 
     if (parsed is ParseFailure && response.finishReason == 'length') {
@@ -197,7 +197,7 @@ class PhoneAgent {
               '上次输出过长被截断。请只输出一个动作指令（如 do(action="Tap", element=[x,y]) 或 finish(message="...")），不要输出任何多余内容。',
         ),
       );
-      response = await llmClient.chat(messages: _trimHistory(messages));
+      response = await llmClient(messages: _trimHistory(messages));
       parsed = ResponseParser.parse(response.text ?? '');
     }
     return parsed;
