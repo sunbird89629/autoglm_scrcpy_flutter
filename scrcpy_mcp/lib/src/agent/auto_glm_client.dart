@@ -16,7 +16,7 @@ class AutoGLMClient {
     required this.baseUrl,
     required this.apiKey,
     required this.model,
-  }) : _http = LoggingClient(logger: Logger('scrcpy.mcp.llm.http'));
+  }) : _http = http.Client();
 
   /// Test-only seam: inject a [http.Client] (e.g. `MockClient`) to exercise
   /// [chat] offline. The analyzer flags use of this outside the package's
@@ -72,7 +72,21 @@ class AutoGLMClient {
     }
 
     final json = jsonDecode(response.body) as Map<String, dynamic>;
+
+    // devLogger.log(Level.FINE, prettyResponse(response));
+    // devLogger.log(Level.FINE, () {
+    //   final StringBuffer sb = StringBuffer();
+    //   sb.writeln(json.toString());
+    // });
     final choice = (json['choices'] as List).first as Map<String, dynamic>;
+
+    devLogger.log(Level.INFO, () {
+      final StringBuffer sb = StringBuffer();
+      sb.writeln('===>');
+      sb.writeln(choice['message']['content']);
+      sb.writeln('===>');
+      return sb.toString();
+    });
 
     // A finish_reason other than "stop" means the output is not a clean,
     // complete answer — "length" = truncated by max_tokens (the trailing

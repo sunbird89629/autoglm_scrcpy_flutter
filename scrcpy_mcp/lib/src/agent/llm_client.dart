@@ -45,6 +45,5 @@ class LlmException implements Exception {
 }
 
 /// Signature for sending a chat-completion request.
-typedef ChatFn = Future<LlmResponse> Function({
-  required List<LlmMessage> messages,
-});
+typedef ChatFn =
+    Future<LlmResponse> Function({required List<LlmMessage> messages});

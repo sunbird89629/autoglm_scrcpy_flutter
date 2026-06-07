@@ -3,9 +3,8 @@ library;
 
 import 'package:adb_tools/adb_tools.dart';
 import 'package:logger_utils/logger_utils.dart';
+import 'package:scrcpy_mcp/scrcpy_mcp.dart';
 import 'package:test/test.dart';
-
-import 'utils/adb_agent_runner.dart';
 
 final _log = Logger('youtube');
 
@@ -40,19 +39,29 @@ void main() {
     () async {
       final adbClient = AdbClient();
       final devices = await adbClient.getDevices();
+      final targetDevice = devices.first;
       if (devices.isEmpty) {
         markTestSkipped('No Android device connected via ADB');
         return;
       }
 
-      final result = await runAgentTask(
-        adb: adbClient,
-        deviceId: devices.first,
-        task: _task,
-        // History tasks spend many steps just navigating in + scrolling.
-        maxSteps: 40,
+      final (screenWidth, screenHeight) = await adbClient.getDeviceScreenInfo(
+        targetDevice,
       );
-
+      final runner = AdbActionRunner(
+        adb: ScrcpyMcpAdb(adbClient),
+        deviceId: devices.first,
+        size: (screenWidth.toInt(), screenHeight.toInt()),
+      );
+      final agent = PhoneAgent(
+        config: AgentConfig(),
+        llmClient: AutoGLMClient.fromTest().chat,
+        takeScreenshot: blankRetryingScreenshot(
+          () => adbClient.takeScreenshot(devices.first),
+        ),
+        actionRunner: runner.run,
+      );
+      final result = await agent.run(_task);
       _log.info(
         'YouTube history result (steps=${result.steps}, '
         'success=${result.success}):\n${result.result}',
