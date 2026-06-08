@@ -103,7 +103,8 @@ abstract class PhoneActionRunner {
         return 'Double tapped at (${c.$1}, ${c.$2})';
 
       case 'Wait':
-        final secs = int.tryParse(
+        final secs =
+            int.tryParse(
               (a.duration ?? '2s').replaceAll(RegExp('[^0-9]'), ''),
             ) ??
             2;

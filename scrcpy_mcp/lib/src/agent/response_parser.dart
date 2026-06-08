@@ -128,7 +128,12 @@ class ResponseParser {
           reason: 'malformed do(): could not extract action type',
         );
       }
-      return ParsedAction(think: think, content: content, memory: memory, action: action);
+      return ParsedAction(
+        think: think,
+        content: content,
+        memory: memory,
+        action: action,
+      );
     }
 
     return ParseFailure(
@@ -194,7 +199,8 @@ class ResponseParser {
       duration: _extractQuoted(content, 'duration'),
       // Call_API carries its payload under `instruction`; fold it into message
       // so the runner has a single field to read.
-      message: _extractFreeText(content, 'message') ??
+      message:
+          _extractFreeText(content, 'message') ??
           _extractFreeText(content, 'instruction'),
     );
   }
@@ -227,8 +233,7 @@ class ResponseParser {
   }
 
   static List<int>? _extractIntList(String content, String key) {
-    final match =
-        RegExp('$key\\s*=\\s*\\[([^\\]]*)\\]').firstMatch(content);
+    final match = RegExp('$key\\s*=\\s*\\[([^\\]]*)\\]').firstMatch(content);
     if (match == null) return null;
     final ints = match
         .group(1)!

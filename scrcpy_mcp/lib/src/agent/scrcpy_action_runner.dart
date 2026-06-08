@@ -87,23 +87,21 @@ class ScrcpyActionRunner extends PhoneActionRunner {
       'android.intent.category.LAUNCHER',
       '1',
     ], deviceId: deviceId);
-    return result.exitCode == 0 &&
-        !(result.stdout as String).contains('Error');
+    return result.exitCode == 0 && !(result.stdout as String).contains('Error');
   }
 
   ScrcpyInjectTouchMessage _touch({
     required int action,
     required int x,
     required int y,
-  }) =>
-      ScrcpyInjectTouchMessage(
-        action: action,
-        pointerId: 0,
-        x: x,
-        y: y,
-        width: kModelCoordSpace,
-        height: kModelCoordSpace,
-      );
+  }) => ScrcpyInjectTouchMessage(
+    action: action,
+    pointerId: 0,
+    x: x,
+    y: y,
+    width: kModelCoordSpace,
+    height: kModelCoordSpace,
+  );
 
   /// Selects all text in the focused field via a Ctrl+A chord: Ctrl down,
   /// A down/up (with Ctrl in the metastate), Ctrl up — the way scrcpy injects

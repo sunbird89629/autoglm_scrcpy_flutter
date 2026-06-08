@@ -21,9 +21,9 @@ class AdbActionRunner extends PhoneActionRunner {
 
   /// Convert a normalized [kModelCoordSpace] coordinate pair to device pixels.
   (int, int) _toPx(int x, int y) => (
-        (x * size.$1 / kModelCoordSpace).round(),
-        (y * size.$2 / kModelCoordSpace).round(),
-      );
+    (x * size.$1 / kModelCoordSpace).round(),
+    (y * size.$2 / kModelCoordSpace).round(),
+  );
 
   @override
   Future<void> tapAt(int x, int y) async {
