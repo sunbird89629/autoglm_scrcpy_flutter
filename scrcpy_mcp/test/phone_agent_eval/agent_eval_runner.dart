@@ -156,6 +156,15 @@ class AgentEvalRunner {
       assertions: assertionResults,
     );
     writeEvent({'type': 'final', ...result.toJson()});
+
+    try {
+      await evalCase.teardown?.call(
+        AgentEvalDevice(adb: adb, deviceId: deviceId),
+      );
+    } catch (_) {
+      // Teardown failures should not affect the eval result.
+    }
+
     await _writeFinal(caseDir, result);
     await sink.close();
     return result;

@@ -2,7 +2,7 @@ import 'package:scrcpy_mcp/scrcpy_mcp.dart';
 
 import '../agent_eval_case.dart';
 
-const youtubeHistoryRecentCase = AgentEvalCase(
+final youtubeHistoryRecentCase = AgentEvalCase(
   id: 'youtube_history_recent',
   description:
       'Navigate to YouTube history and summarize recent visible videos.',
@@ -12,6 +12,8 @@ const youtubeHistoryRecentCase = AgentEvalCase(
 完成后用 finish(message="...") 返回总结。
 ''',
   config: AgentConfig(maxSteps: 25, repeatedActionThreshold: 8),
+  setup: (device) => device.enableShowTouches(),
+  teardown: (device) => device.disableShowTouches(),
   assertions: [
     TextContainsAssertion('视频'),
     VisualContainsAssertion('YouTube 历史记录页面'),

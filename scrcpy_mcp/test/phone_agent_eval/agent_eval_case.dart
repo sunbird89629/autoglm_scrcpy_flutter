@@ -4,21 +4,23 @@ import 'package:scrcpy_mcp/scrcpy_mcp.dart';
 import 'agent_eval_result.dart';
 
 class AgentEvalCase {
+  final String id;
+  final String description;
+  final String task;
+  final AgentConfig config;
+  final Future<void> Function(AgentEvalDevice device)? setup;
+  final Future<void> Function(AgentEvalDevice device)? teardown;
+  final List<AgentEvalAssertion> assertions;
+
   const AgentEvalCase({
     required this.id,
     required this.description,
     required this.task,
     required this.config,
     this.setup,
+    this.teardown,
     required this.assertions,
   });
-
-  final String id;
-  final String description;
-  final String task;
-  final AgentConfig config;
-  final Future<void> Function(AgentEvalDevice device)? setup;
-  final List<AgentEvalAssertion> assertions;
 }
 
 class AgentEvalDevice {
@@ -47,6 +49,28 @@ class AgentEvalDevice {
   }
 
   Future<void> waitFor(Duration duration) => Future<void>.delayed(duration);
+
+  /// Show a white dot on every tap so screenshots reveal tap locations.
+  Future<void> enableShowTouches() async {
+    await adb.shell([
+      'settings',
+      'put',
+      'system',
+      'show_touches',
+      '1',
+    ], deviceId: deviceId);
+  }
+
+  /// Hide tap indicator dots.
+  Future<void> disableShowTouches() async {
+    await adb.shell([
+      'settings',
+      'put',
+      'system',
+      'show_touches',
+      '0',
+    ], deviceId: deviceId);
+  }
 }
 
 sealed class AgentEvalAssertion {
