@@ -54,7 +54,11 @@ class AutoGLMClient {
       // autoglm-phone caps output at 2048 tokens; do not exceed it.
       'max_tokens': 2048,
       'frequency_penalty': 0.5,
-      'temperature': 0.1,
+      // 0.1 was prone to repetition collapse (runaway <think> hitting the token
+      // cap → finish_reason="length"); 0.3 + top_p give room to escape the loop
+      // without letting coordinate output diverge.
+      'temperature': 0.3,
+      'top_p': 0.7,
     };
     final body = jsonEncode(rawBody);
 
@@ -73,7 +77,7 @@ class AutoGLMClient {
 
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final choice = (json['choices'] as List).first as Map<String, dynamic>;
-    devLogger.log(Level.INFO, prettyJson(response));
+    // devLogger.log(Level.INFO, prettyJson(response));
 
     // devLogger.log(Level.INFO, () {
     //   final StringBuffer sb = StringBuffer();

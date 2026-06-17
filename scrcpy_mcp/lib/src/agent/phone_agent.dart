@@ -173,9 +173,16 @@ class PhoneAgent {
     List<String> memories,
   ) {
     if (step == 0) return message;
-    final memoryBlock = memories.isEmpty
+    // Keep only the most recent entries: the cross-step memory block is rebuilt
+    // every turn and otherwise grows unbounded with step count, bloating the
+    // prompt and pushing autoglm into low-temperature repetition collapse.
+    const keepMemories = 6;
+    final recent = memories.length > keepMemories
+        ? memories.sublist(memories.length - keepMemories)
+        : memories;
+    final memoryBlock = recent.isEmpty
         ? ''
-        : '跨步记录：\n---\n${memories.join('\n---\n')}\n---\n';
+        : '跨步记录：\n---\n${recent.join('\n---\n')}\n---\n';
     return '$memoryBlock'
         '上一步操作结果：${lastResult ?? '已执行'}。请对照当前截图判断是否生效，并继续完成任务。';
   }

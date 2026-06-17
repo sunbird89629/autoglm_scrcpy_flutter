@@ -20,7 +20,8 @@ class DeepLocateActionRunner {
     required this.inner,
     required this.screenshotProvider,
     required this.chat,
-    this.cropRadius = 150, // model-coord radius (0–1000)
+    this.cropRadius = 100, // model-coord radius (0–1000)
+    this.upscaleTo = 768, // upscale crop so its longer side ≈ this many px
     this.enabled = true,
   });
 
@@ -28,6 +29,12 @@ class DeepLocateActionRunner {
   final Future<Uint8List> Function() screenshotProvider;
   final ChatFn chat;
   final int cropRadius;
+
+  /// Pass-2 sends a small crop; upscaling it to the model's preferred input
+  /// size keeps fine detail instead of leaving the model to enlarge a tiny
+  /// image internally. Coordinates stay relative [0,1000] so mapping is
+  /// unaffected. Set ≤0 to disable upscaling.
+  final int upscaleTo;
   final bool enabled;
 
   /// Matches [ActionRunner] so this can be passed directly.
@@ -80,13 +87,28 @@ class DeepLocateActionRunner {
       final x2 = (pxX + pxRadius).clamp(x1 + 1, imgW);
       final y2 = (pxY + pxRadius).clamp(y1 + 1, imgH);
 
-      final cropped = img.copyCrop(
+      var cropped = img.copyCrop(
         fullImage,
         x: x1,
         y: y1,
         width: x2 - x1,
         height: y2 - y1,
       );
+
+      // Upscale the crop to the model's preferred input size so it reasons on
+      // a high-res view rather than a ~200px patch. Only enlarge, never shrink.
+      final longSide =
+          cropped.width > cropped.height ? cropped.width : cropped.height;
+      if (upscaleTo > 0 && longSide < upscaleTo) {
+        final scale = upscaleTo / longSide;
+        cropped = img.copyResize(
+          cropped,
+          width: (cropped.width * scale).round(),
+          height: (cropped.height * scale).round(),
+          interpolation: img.Interpolation.cubic,
+        );
+      }
+
       final cropBytes = Uint8List.fromList(img.encodePng(cropped));
 
       // 3. Ask model for refined coordinate in cropped view [0,1000]
