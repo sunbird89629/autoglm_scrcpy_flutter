@@ -1,5 +1,7 @@
 #!/usr/bin/env dart
 
+import 'dart:io';
+
 import 'package:adb_tools/adb_tools.dart';
 import 'package:logger_utils/logger_utils.dart';
 import 'package:mcp_dart/mcp_dart.dart' hide Logger;
@@ -14,15 +16,16 @@ void main(List<String> args) async {
 
   final session = await ScrcpySessionImpl.create(adb: scrcpyAdb);
 
-  final agentConfig = AgentConfig.fromEnv();
-  final llmClient = AutoglmLlmClient.fromTest();
+  final client = AutoGLMOfficialClient.fromTest();
+  final sopEnv = Platform.environment['SCRCPY_MCP_SOP_DIR'];
+  final sopDir = (sopEnv != null && sopEnv.isNotEmpty) ? sopEnv : null;
 
   final server = ScrcpyMcpServer(
     session: session,
     adb: scrcpyAdb,
     recordingAdb: scrcpyAdb,
-    agentConfig: agentConfig,
-    llmClient: llmClient,
+    agentConfig: AgentConfig(sopDir: sopDir),
+    client: client,
   );
 
   final transport = StdioServerTransport();

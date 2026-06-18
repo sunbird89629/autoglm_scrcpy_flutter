@@ -2,18 +2,39 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:scrcpy_mcp/src/agent/auto_glm_client.dart';
 import 'package:scrcpy_mcp/src/agent/llm_client.dart';
-import 'package:scrcpy_mcp/src/agent/autoglm_llm_client.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('AutoglmLlmClient', () {
-    AutoglmLlmClient makeClient(http.Client mockHttp) => AutoglmLlmClient(
-      baseUrl: 'https://api.openai.com/v1',
-      apiKey: 'sk-test',
-      model: 'gpt-4o',
-      httpClient: mockHttp,
-    );
+  group('AutoGLMOfficialClient', () {
+    AutoGLMOfficialClient makeClient(http.Client mockHttp) =>
+        AutoGLMOfficialClient.withClient(
+          baseUrl: 'https://api.openai.com/v1',
+          apiKey: 'sk-test',
+          model: 'gpt-4o',
+          httpClient: mockHttp,
+        );
+
+    test('carries the official (no-tag) prompt and no cross-step memory', () {
+      final client = makeClient(
+        MockClient((_) async => http.Response('', 200)),
+      );
+      expect(client.memoryEnabled, isFalse);
+      expect(client.systemPromptTemplate.contains('<think>'), isFalse);
+      expect(client.systemPromptTemplate.contains('<answer>'), isFalse);
+    });
+
+    test('open-source client carries the tag prompt and cross-step memory', () {
+      final client = AutoGLMOpenSourceClient.withClient(
+        baseUrl: 'https://x/api',
+        apiKey: 'k',
+        model: 'AutoGLM-Phone-9B',
+        httpClient: MockClient((_) async => http.Response('', 200)),
+      );
+      expect(client.memoryEnabled, isTrue);
+      expect(client.systemPromptTemplate.contains('<answer>'), isTrue);
+    });
 
     test('sends correct Authorization header and model', () async {
       late http.Request captured;
@@ -34,7 +55,7 @@ void main() {
         }),
       );
 
-      await client.chat(messages: []);
+      await client.chat(messages: <LlmMessage>[]);
 
       expect(captured.headers['Authorization'], 'Bearer sk-test');
       final body = jsonDecode(captured.body) as Map<String, dynamic>;
@@ -58,7 +79,7 @@ void main() {
         ),
       );
 
-      final response = await client.chat(messages: []);
+      final response = await client.chat(messages: <LlmMessage>[]);
 
       expect(response.text, 'Task complete');
     });
@@ -108,7 +129,7 @@ void main() {
       );
 
       await expectLater(
-        client.chat(messages: []),
+        client.chat(messages: <LlmMessage>[]),
         throwsA(isA<LlmException>()),
       );
     });
