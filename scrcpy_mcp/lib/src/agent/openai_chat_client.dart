@@ -66,16 +66,33 @@ abstract class OpenAiChatClient implements AgentModelClient {
     final choice = (json['choices'] as List).first as Map<String, dynamic>;
     devLogger.log(Level.INFO, prettyResponse(response));
 
-    // A finish_reason other than "stop" means the output is not a clean,
-    // complete answer — "length" = truncated by max_tokens (the trailing
-    // finish()/action is likely cut off), "content_filter" = blocked. Surface
-    // it so downstream parse failures are explainable rather than silent.
+    // GLM finish_reason enum: "stop" (clean), "length" (hit max_tokens),
+    // "tool_calls" (function call — unused here), "sensitive" (safety
+    // moderation, error 1301), "network_error" (inference failure). Surface
+    // every non-stop reason so downstream parse failures are explainable
+    // rather than silent.
     final finishReason = choice['finish_reason'] as String?;
-    if (finishReason != null && finishReason != 'stop') {
-      _log.warning(
-        '$model finish_reason="$finishReason" — output may be '
-        'truncated or filtered; raise max_tokens or shorten the prompt.',
-      );
+    switch (finishReason) {
+      case null || 'stop':
+        break;
+      case 'length':
+        _log.warning(
+          '$model finish_reason="length" — output truncated at max_tokens; '
+          'the trailing action is likely cut off (raise max_tokens or shorten '
+          'the prompt).',
+        );
+      case 'sensitive':
+        _log.warning(
+          '$model finish_reason="sensitive" — output blocked by GLM safety '
+          'moderation (error 1301); no usable action this turn.',
+        );
+      case 'network_error':
+        _log.warning(
+          '$model finish_reason="network_error" — inference failed during '
+          'generation; the response is incomplete.',
+        );
+      default:
+        _log.warning('$model finish_reason="$finishReason" — non-stop finish.');
     }
 
     final message = choice['message'] as Map<String, dynamic>;
