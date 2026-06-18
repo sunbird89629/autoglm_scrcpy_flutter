@@ -6,7 +6,7 @@ import 'package:image/image.dart' as img;
 import 'llm_client.dart';
 import 'response_parser.dart';
 
-/// Wraps an [ActionRunner] with two-pass deep-locate refinement for Tap actions
+/// Wraps an `ActionRunner` with two-pass deep-locate refinement for Tap actions
 /// (inspired by Midscene's deepLocate).
 ///
 /// **How it works:**
@@ -37,7 +37,7 @@ class DeepLocateActionRunner {
   final int upscaleTo;
   final bool enabled;
 
-  /// Matches [ActionRunner] so this can be passed directly.
+  /// Matches `ActionRunner` so this can be passed directly.
   Future<String> run(PhoneAction action) async {
     if (!enabled) return inner(action);
     if (action is! DoAction) return inner(action);
@@ -118,9 +118,8 @@ class DeepLocateActionRunner {
           LlmMessage(
             role: 'user',
             textContent:
-                '这是之前定位区域的放大视图。'
-                '请用 do(action="Tap", element=[x,y]) 返回目标元素在当前视图中的精确中心坐标。'
-                '坐标空间 [0,1000]。只返回单独一行 do(...)。',
+                '这是之前定位区域的放大视图。请用 do(action="Tap", element=[x,y]) '
+                '返回目标元素在当前视图中的精确中心坐标。坐标空间 [0,1000]。只返回单独一行 do(...)。',
             imageBase64: base64Crop,
             imageMimeType: 'image/png',
           ),

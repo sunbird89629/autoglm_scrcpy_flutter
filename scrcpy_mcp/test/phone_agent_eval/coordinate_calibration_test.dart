@@ -138,8 +138,8 @@ void main() {
       final allX = results.where((r) => r['deviation_px'] != '(-1, -1)').map((
         r,
       ) {
-        final parts = (r['deviation_px'] as String)
-            .replaceAll(RegExp(r'[()]'), '')
+        final parts = (r['deviation_px']! as String)
+            .replaceAll(RegExp('[()]'), '')
             .split(', ');
         return (dx: int.parse(parts[0]), dy: int.parse(parts[1]));
       }).toList();
@@ -165,7 +165,7 @@ void main() {
         _log.info('─────────────────────────────────────────────────');
         _log.info('  Average deviation: X=${avgDx}px, Y=${avgDy}px');
         _log.info(
-          '  (model → pixel: X*${screenWidth}/1000, Y*$screenHeight/1000)',
+          '  (model → pixel: X*$screenWidth/1000, Y*$screenHeight/1000)',
         );
       }
       _log.info('═══════════════════════════════════════════════════');

@@ -94,8 +94,10 @@ class AgentCPMGuiClient implements AgentModelClient {
       return const LlmResponse(text: '', finishReason: 'stop');
     }
 
-    final rawText = (choices[0]['message']?['content'] ?? '') as String;
-    final finishReason = choices[0]['finish_reason'] as String?;
+    final first = choices[0] as Map<String, dynamic>;
+    final message = first['message'] as Map<String, dynamic>?;
+    final rawText = (message?['content'] ?? '') as String;
+    final finishReason = first['finish_reason'] as String?;
 
     // Convert AgentCPM-GUI JSON output → AutoGLM-format text
     // so ResponseParser can handle it unchanged
@@ -120,8 +122,8 @@ class AgentCPMGuiClient implements AgentModelClient {
       // POINT → Tap (convert AgentCPM's [x,y] to element=[x,y])
       final point = json['POINT'] as List<dynamic>?;
       if (point != null && point.length == 2) {
-        final x = point[0];
-        final y = point[1];
+        final x = point[0] as int;
+        final y = point[1] as int;
 
         // Check if this is a swipe (has 'to' field)
         final to = json['to'];
@@ -132,8 +134,8 @@ class AgentCPMGuiClient implements AgentModelClient {
         }
         if (to is String) {
           final delta = _swipeDelta(to);
-          final ex = (x + delta.dx).clamp(0, 1000) as int;
-          final ey = (y + delta.dy).clamp(0, 1000) as int;
+          final ex = (x + delta.dx).clamp(0, 1000);
+          final ey = (y + delta.dy).clamp(0, 1000);
           return 'do(action="Swipe", start=[$x,$y], end=[$ex,$ey])';
         }
 

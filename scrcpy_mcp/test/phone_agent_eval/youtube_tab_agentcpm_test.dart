@@ -73,8 +73,9 @@ void main() {
                 ], deviceId: deviceId)).stdout
                 as String;
         if (pre.contains('text="我"') &&
-            pre.contains('com.google.android.youtube'))
+            pre.contains('com.google.android.youtube')) {
           break;
+        }
         _log.info('Dismissing dialog (attempt ${attempt + 1})...');
         await adb.shell([
           'input',
@@ -108,7 +109,7 @@ void main() {
         model: 'OpenBMB/AgentCPM-GUI',
       ).chat;
 
-      final prompt = '请点击屏幕底部导航栏最右边的"我"标签按钮。';
+      const prompt = '请点击屏幕底部导航栏最右边的"我"标签按钮。';
 
       final response = await chat(
         messages: [
