@@ -11,6 +11,16 @@ import 'openai_chat_client.dart';
 /// prompt ([kOfficialPrompt], coordinate space [0,1000]) — no response
 /// translation needed, the shared `ResponseParser` handles its output as-is.
 class DoubaoSeedClient extends OpenAiChatClient {
+  /// Default Volcano Ark endpoint; override with `DOUBAO_BASE_URL`.
+  ///
+  /// Must be the standard `/api/v3` endpoint, NOT the Coding Plan
+  /// `/api/coding/v3` one: the Coding Plan endpoint rejects image input with a
+  /// generic `InvalidParameter` 400, and the phone agent sends a screenshot
+  /// every step.
+  static const defaultBaseUrl = 'https://ark.cn-beijing.volces.com/api/v3';
+  static const arkApiKey = 'ark-71cf1e4a-1520-47aa-aa62-f5a5f6ff652b-12721';
+  static const arkModel = 'doubao-seed-2-0-lite-260428';
+
   DoubaoSeedClient({
     required super.baseUrl,
     required super.apiKey,
@@ -25,26 +35,18 @@ class DoubaoSeedClient extends OpenAiChatClient {
     required super.httpClient,
   }) : super.withHttp();
 
-  /// Default Volcano Ark endpoint; override with `DOUBAO_BASE_URL`.
-  ///
-  /// Must be the standard `/api/v3` endpoint, NOT the Coding Plan
-  /// `/api/coding/v3` one: the Coding Plan endpoint rejects image input with a
-  /// generic `InvalidParameter` 400, and the phone agent sends a screenshot
-  /// every step.
-  static const defaultBaseUrl = 'https://ark.cn-beijing.volces.com/api/v3';
-
   /// `DOUBAO_MODEL` must be the full versioned Model ID (e.g.
   /// `doubao-seed-2-0-lite-260428`) — the short name returns HTTP 404.
   factory DoubaoSeedClient.fromEnv() => DoubaoSeedClient(
-    baseUrl: Platform.environment['DOUBAO_BASE_URL'] ?? defaultBaseUrl,
+    baseUrl: Platform.environment['DOUBAO_BASE_URL']!,
     apiKey: Platform.environment['DOUBAO_API_KEY']!,
     model: Platform.environment['DOUBAO_MODEL']!,
   );
 
   factory DoubaoSeedClient.fromTest() => DoubaoSeedClient(
     baseUrl: defaultBaseUrl,
-    apiKey: 'ark-71cf1e4a-1520-47aa-aa62-f5a5f6ff652b-12721',
-    model: 'doubao-seed-2-0-lite-260428',
+    apiKey: arkApiKey,
+    model: arkModel,
   );
 
   @override
