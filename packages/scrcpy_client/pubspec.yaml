@@ -4,7 +4,7 @@ description: >-
   Handles ADB orchestration, socket communication, video stream parsing,
   and control message injection.
 version: 0.1.0
-homepage: https://github.com/sunbird89629/autoglm_scrcpy_flutter
+homepage: https://github.com/sunbird89629/scrcpy_flutter
 
 environment:
   sdk: ^3.10.0

@@ -1,4 +1,4 @@
-# Contributing to autoglm_scrcpy_flutter
+# Contributing to scrcpy_flutter
 
 Thank you for your interest in contributing! This guide will help you get started.
 
@@ -12,8 +12,8 @@ Thank you for your interest in contributing! This guide will help you get starte
 
 ```bash
 # Clone the repo
-git clone https://github.com/sunbird89629/autoglm_scrcpy_flutter.git
-cd autoglm_scrcpy_flutter
+git clone https://github.com/sunbird89629/scrcpy_flutter.git
+cd scrcpy_flutter
 
 # Install dependencies and link local packages
 melos bootstrap
@@ -28,8 +28,9 @@ melos run gen:i18n
 ### Running the apps
 
 ```bash
-cd autoglm_app && flutter run -d macos    # AI agent app
+cd scrcpy_flutter && flutter run -d macos # Scrcpy Flutter client app
 cd scrcpy_app && flutter run -d macos     # Scrcpy client app
+cd scrcpy_plus && flutter run -d macos    # macOS menu-bar app
 ```
 
 ### Common commands
@@ -55,27 +56,25 @@ melos run gen:i18n      # Regenerate slang i18n strings
 This is a Melos-managed monorepo. Lower layers must never import from upper layers.
 
 ```
-packages/autoglm_logger ──> packages/autoglm_core
-packages/autoglm_adb ────────────────┐
-packages/autoglm_logger ─────────────┤
-scrcpy_view (widget/protocol)  ──────┼──> scrcpy_app (scrcpy client)
-                                      └──> scrcpy_mcp (MCP server)
+packages/adb_tools ────────────────────┐
+logger_utils (sibling repo) ───────────┤
+scrcpy_view (widget/protocol)  ────────┼──> scrcpy_app / scrcpy_flutter / scrcpy_plus
+                                        └──> scrcpy_mcp (MCP server)
 ```
 
 | Package | Description |
 |---------|-------------|
 | `scrcpy_view` | Reusable Flutter widget + protocol library for Android screen mirroring |
 | `scrcpy_app` | Standalone scrcpy desktop client |
+| `scrcpy_flutter` | Scrcpy Flutter client (screen mirroring + MCP panel) |
+| `scrcpy_plus` | macOS menu-bar app for device management + scrcpy launcher |
 | `scrcpy_mcp` | MCP server wrapping scrcpy operations |
-| `autoglm_app` | AI agent desktop app |
-| `packages/autoglm_core` | Shared settings, history, logging |
-| `packages/autoglm_adb` | ADB binary wrapper |
-| `packages/autoglm_logger` | Logging facade |
+| `packages/adb_tools` | ADB client (shell, forward, push, pair, connect) + binary manager |
 
 ## Code Style
 
 - Analysis rules: [very_good_analysis](https://pub.dev/packages/very_good_analysis) (configured in root `analysis_options.yaml`)
-- Use `appLogger` from `package:autoglm_core` for all logging — never `print()`
+- Use `initLogging()` / hierarchical `Logger` from `package:logger_utils` — never `print()`
 - Follow existing patterns in the codebase; check neighboring files before introducing new ones
 
 ## Testing
@@ -85,7 +84,7 @@ scrcpy_view (widget/protocol)  ──────┼──> scrcpy_app (scrcpy c
 melos run test
 
 # Run tests for a specific package
-cd packages/autoglm_core && flutter test
+cd packages/adb_tools && flutter test
 ```
 
 - Tests requiring a physical Android device go in `*_real_device_test.dart`
@@ -103,7 +102,7 @@ cd packages/autoglm_core && flutter test
 
 ## Reporting Issues
 
-Use [GitHub Issues](https://github.com/sunbird89629/autoglm_scrcpy_flutter/issues) to report bugs or request features. Include:
+Use [GitHub Issues](https://github.com/sunbird89629/scrcpy_flutter/issues) to report bugs or request features. Include:
 
 - Steps to reproduce
 - Expected vs actual behavior

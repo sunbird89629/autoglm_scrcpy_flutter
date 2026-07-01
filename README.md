@@ -1,6 +1,6 @@
-# AutoGLM Flutter
+# Scrcpy Flutter
 
-AutoGLM Flutter is a macOS-first Flutter desktop workspace for Android device
+Scrcpy Flutter is a macOS-first Flutter desktop workspace for Android device
 automation. It combines ADB device management, scrcpy-based screen mirroring,
 input control, and MCP server surfaces so local tools and agents can inspect
 and operate an Android device.
@@ -8,10 +8,9 @@ and operate an Android device.
 ## Status
 
 The project is under active development. The reusable ADB wrapper, scrcpy
-protocol layer, standalone scrcpy desktop app, MCP server package, and the
-main AutoGLM desktop shell are available. macOS is the only verified target at
-the moment; Windows and Linux support are planned after the macOS path is
-stable.
+protocol layer, standalone scrcpy desktop app, and MCP server package are
+available. macOS is the only verified target at the moment; Windows and Linux
+support are planned after the macOS path is stable.
 
 ## Features
 
@@ -19,10 +18,10 @@ stable.
 - Scrcpy server lifecycle management and H.264 stream handling
 - WebView-based Android screen preview with touch, key, text, scroll, and
   navigation controls
-- Standalone `scrcpy_app` desktop client for local mirroring experiments
+- Standalone `scrcpy_app` / `scrcpy_flutter` desktop clients for local
+  mirroring experiments
+- `scrcpy_plus` macOS menu-bar app for device management + scrcpy launcher
 - `scrcpy_mcp` server exposing device and mirroring operations over MCP
-- `autoglm_app` desktop shell with settings, history, localization, and
-  provider wiring for future agent workflows
 
 ## Prerequisites
 
@@ -49,22 +48,26 @@ melos run format       # expect: no diff
 melos run test         # expect: all green
 
 # 5. Run the app
-cd autoglm_app && flutter run -d macos
+cd scrcpy_flutter && flutter run -d macos
 ```
 
 ## Current Project Map
 
 ```
-autoglm_app/           # Main AutoGLM Flutter desktop app
+scrcpy_flutter/        # Main Scrcpy Flutter desktop client (mirroring + MCP panel)
   lib/
-    main.dart          # App bootstrap
-    app.dart           # MaterialApp + NavigationRail shell
-    router.dart        # go_router: devices/chat/workflows/history/settings
-    pages/             # devices (rich cards), chat, history, workflows, settings
-    providers/         # ADB, device selection, scrcpy, history, settings, locale, theme
-    scrcpy/            # Adapter: AdbClient → ScrcpyAdb, appLogger → ScrcpyLogger
-    theme/             # design_tokens, light_theme, dark_theme
-    i18n/              # slang JSON + generated strings
+    theme/
+    views/             # Control overlay widgets
+    widgets/
+  pubspec.yaml
+
+scrcpy_plus/           # macOS menu-bar app for device management + scrcpy launcher
+  lib/
+    app/               # AppController
+    device/
+    mcp/               # McpServerController
+    scrcpy/            # Adapter: AdbClient → ScrcpyAdb
+    settings/          # SettingsManager (JSON config)
   pubspec.yaml
 
 scrcpy_app/            # Standalone scrcpy client (mirroring + MCP panel)
@@ -111,16 +114,7 @@ scrcpy_mcp/            # MCP server wrapping scrcpy operations
   pubspec.yaml
 
 packages/
-  autoglm_core/        # Settings, history (SQLite), trace (JSONL), logger re-export
-    lib/
-      src/
-        history/
-        models/
-        settings/
-        trace/
-    test/
-
-  autoglm_adb/         # ADB binary lifecycle and command wrapper
+  adb_tools/           # ADB binary lifecycle and command wrapper
     lib/
       src/
         adb_binary_manager.dart  # Downloads/caches platform-tools
@@ -130,12 +124,16 @@ packages/
         exceptions.dart
     test/
 
-  autoglm_logger/      # App logger facade and class logger helpers
-    lib/
+  scrcpy_client/       # Pure-Dart scrcpy protocol client (ADB orchestration,
+    lib/               # socket comms, stream parsing, control injection)
+    test/
 
 pubspec.yaml           # Dart workspace root, package list, and Melos scripts
 analysis_options.yaml  # Root analyzer configuration
 ```
+
+> `logger_utils` (logging facade) lives in a sibling repo and is pulled in via
+> a relative `path:` dependency (`../../logger_utils`), not under `packages/`.
 
 ## TODO
 
@@ -156,7 +154,7 @@ analysis_options.yaml  # Root analyzer configuration
 
 ### Phase 4 — Desktop App Shell
 
-- [ ] `autoglm_app` device sidebar: selected-device details, stream status, start/stop mirroring button
+- [ ] Desktop app device sidebar: selected-device details, stream status, start/stop mirroring button
 - [ ] `ChatPage`: screen preview panel, task input, live execution log, agent state indicator
 - [ ] `HistoryPage`: search bar, date/status filters, step detail panel, trace timing view
 - [ ] `SettingsPage`: LLM provider / model / base URL / API key, MCP server toggle + port, logs path, diagnostics
@@ -174,7 +172,7 @@ analysis_options.yaml  # Root analyzer configuration
 
 | Phase | Area | Status | Goal |
 |---|---|---|---|
-| 0 | Monorepo foundation | done | Keep `autoglm_app`, `scrcpy_view`, `scrcpy_mcp`, and shared packages bootstrapped through Melos with analyze/format/test scripts. |
+| 0 | Monorepo foundation | done | Keep `scrcpy_view`, `scrcpy_mcp`, `scrcpy_app`/`scrcpy_flutter`/`scrcpy_plus`, and shared packages bootstrapped through Melos with analyze/format/test scripts. |
 | 1 | Core services | mostly done | Maintain settings, logging, ADB process execution, trace records, and history storage as stable lower-level packages. |
 | 2 | Device management | in progress | Make Android device discovery, selection, wireless pairing, connect/disconnect, and error recovery production-ready. |
 | 3 | Scrcpy mirroring | in progress | Stabilize server deployment, socket lifecycle, H.264 parsing, MPEG-TS proxying, video playback, and input control. |
@@ -218,7 +216,7 @@ Done:
 - `DevicesPage` rewritten with rich device cards (model, status, connection type)
 
 Remaining:
-- Device sidebar in `autoglm_app`: selected-device details, stream status, and quick controls
+- Device sidebar in the desktop app shell: selected-device details, stream status, and quick controls
 - Turn `ChatPage` into the main operation workspace: screen preview, task input, execution log, and agent state indicator
 - Expand `HistoryPage` with search, filters, details panel, and step replay/debug view
 - Expand `SettingsPage` for provider/model/base URL/API key, MCP server settings, logs path, and diagnostics
@@ -276,11 +274,10 @@ Current test coverage:
 
 | Package | Test focus |
 |---|---|
-| `autoglm_app` | Router, shell layout, settings UI, locale/theme providers, device cards (all status/connection variants) |
-| `packages/autoglm_adb` | ADB command parsing, process runner, binary manager, `getDevicesWithInfo()` parsing and degradation |
-| `packages/autoglm_core` | Settings, history storage, trace records, logger behavior |
+| `packages/adb_tools` | ADB command parsing, process runner, binary manager, `getDevicesWithInfo()` parsing and degradation |
 | `scrcpy_view` | Control message encoding, server wiring, stream parser |
 | `scrcpy_mcp` | MCP tool/resource/prompt contracts, HTTP server lifecycle |
+| `scrcpy_plus` | Settings manager, device management |
 
 Packages without a `test/` directory are skipped by the default command.
 ADB tests that require a real Android device should stay skipped by default or
@@ -291,9 +288,9 @@ move to a separately triggered integration test workflow.
 Scripts run in every package by default. Narrow with `--scope` / `--ignore`:
 
 ```bash
-melos run analyze --scope="autoglm_core"
-melos run test --scope="autoglm_*"          # glob match
-melos run test --ignore="autoglm_app"
+melos run analyze --scope="adb_tools"
+melos run test --scope="scrcpy_*"           # glob match
+melos run test --ignore="scrcpy_app"
 ```
 
 ### Adding dependencies
@@ -301,7 +298,7 @@ melos run test --ignore="autoglm_app"
 Because of pub workspaces, add dependencies inside the target package, not at the root:
 
 ```bash
-cd packages/autoglm_core
+cd packages/adb_tools
 dart pub add some_package
 cd - && melos bootstrap                     # refresh links
 ```
@@ -316,14 +313,12 @@ melos clean                 # nuke .dart_tool + pubspec.lock; follow with `melos
 
 ### Conventions
 
-- One PR can span `packages/*`, `autoglm_app`, `scrcpy_app`, `scrcpy_view`, and `scrcpy_mcp` when a feature crosses package boundaries.
-- Lower layers (`autoglm_core`, `autoglm_adb`, `scrcpy_view`) must not import from upper application layers such as `autoglm_app`; verify with `melos list --graph`.
+- One PR can span `packages/*`, `scrcpy_app`, `scrcpy_flutter`, `scrcpy_plus`, `scrcpy_view`, and `scrcpy_mcp` when a feature crosses package boundaries.
+- Lower layers (`packages/adb_tools`, `scrcpy_view`) must not import from upper application layers; verify with `melos list --graph`.
 - Open the IDE at the repo root so cross-package navigation works.
 
 ## Settings file
 
-`~/Library/Application Support/AutoGLM/settings.json` — JSON, hand-editable. Fields:
-- `themeMode`: "ThemeMode.system" | "ThemeMode.light" | "ThemeMode.dark"
-- `locale`: "system" | "zh-CN" | "en-US"
-- `llmBaseUrl`, `llmModel`, `llmApiKey`
-- `mcpServerEnabled`, `mcpServerPort`
+`scrcpy_plus` persists config under `~/Library/Application Support/scrcpy_plus/`:
+- `settings.json` — app settings
+- `known_devices.json` — known device serials
